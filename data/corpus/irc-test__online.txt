@@ -1,0 +1,215 @@
+#
+-
+-
+-
+-
+-
+-
+# Take the online test
+After you receive the invitation, you can take the online citizenship test. Find out what you need to do to prepare for and complete the test.
+This page doesn't apply to the other test formats (in person or on Microsoft Teams).
+## On this page
+- Getting ready for the test
+- Take the test
+- What to do and not to do during the test
+- How to start the test
+- Help with common problems
+## Getting ready for the test
+Citizenship tests are 45 minutes long. Once the timer starts, you won't be able to stop it. After 45 minutes, your test will be submitted automatically, even if you're not finished. You'll get a warning when you have 5 minutes left.
+Before you start the test, make sure you're prepared.
+### Get your identification (ID)
+Get a piece of ID, for example
+- your permanent resident card (even if it's expired) or
+- a valid (not expired) piece of ID with your photo and signature on it (for example, a driver's licence or health card)
+### Use the right devices and browsers
+You must take the test
+- on a desktop computer, laptop or tablet with a webcam
+- using a Chrome or Safari Web browser
+Do not take the test
+- on a mobile phone
+- using Chrome on an iPad
+- on a Microsoft Surface Pro
+- on a virtual private network (VPN)
+### Pick a good test location
+The test location must have good lighting so our system can see you clearly through your webcam. You can take the test in a public library or with a public computer.
+You don't need to be in Canada to take the online test.
+## Taking the test
+While you're taking your citizenship test, we'll use your webcam to take random photos to confirm your identity and ensure you're working alone. We'll compare these photos with your test photo and the ones from your application.
+If there are technical issues or signs of cheating, your test may be invalid. We'll follow up and ask you to take the test again.
+## What to do and not to do during the test
+To avoid having to retake the test for a technical reason, make sure you
+- turn on your webcam and check that your face is fully visible in the frame
+- have a reliable Internet connection
+- have no other tabs, windows or programs open on the computer
+- turn off your virtual private network (VPN)
+- give yourself enough time to take the test (because the timer can't be paused)
+For your test to be valid, you must
+- take the test alone
+- take the test in the same place you took the photo of yourself and your ID before the test
+- make sure there are no items in the background that have your personal information on them (like a diploma)
+There are also some things you must not do during the test:
+- Don't use any other devices.
+- Don't look at any study materials.
+- Don't use the back button in your web browser.
+## How to start the test
+- Sign in
+- Sign in to the online test only after you receive an invitation.
+- Use your application number and your unique client identifier (UCI) to sign in.
+- Read and accept the privacy notice, and the terms and conditions.
+- Request the test link and check your email
+- Select the "Email me the test link" button at the bottom of the page. We'll send the link to the same email address that received the test invitation (the email on your citizenship application) or your representative's email.
+- If you're using a representative, you'll have an option to send the link to your email instead of theirs.
+- It may take a few minutes for you or your representative to receive the test link.
+- The link expires after 15 minutes. If your link expires, sign in again to get a new test link.
+- If you sent yourself a test link multiple times, use the latest test link to sign in.
+- Confirm your identity
+- Re-enter your application number and UCI to confirm your identity.
+- Take photos of your identification (ID) and yourself
+- Your ID can be your permanent resident (PR) card or a valid piece of ID with your photo and signature on it (for example, a driver's licence or health card).
+- Wear appropriate clothing for your photo. You may wear traditional or religious clothing, head coverings, and reading or prescription glasses, but your face must be clearly visible.
+- If your photos look blurred, your test may be invalid, and we may ask you to take the test again.
+- Start the test
+- When you're ready to start the test, select the "Start the test" button. The 45-minute countdown will begin.
+Go to the test
+## Help with common problems
+### Signing in to the test
+403 error message
+If you get a 403 error message when you sign in, try
+- turning off your virtual private network (VPN)
+- disabling your browser extensions
+- using a different device
+- using a different Internet connection
+- waiting a few hours to take the test
+If you still have issues signing in, email the address in your test invitation.
+"You can't take the test right now" message
+You may see this message if you
+- attempted to sign in
+- before you got your test invitation
+- before or after your 30-day period of test access
+- entered the wrong application number or unique client identifier (UCI)
+If you still have issues signing in, email the address in your test invitation.
+Blank screen or message that browser isn't supported
+If you see a blank screen or a message that your browser isn't supported, make sure you're using Chrome or Safari.
+If you're already using Chrome or Safari, try
+- updating your Chrome or Safari to the latest version
+- disabling your browser extensions
+- clearing your browser's cookies and cache
+- turning off hardware acceleration and restarting the browser (if you use Chrome)
+- restarting your browser or device
+- reinstalling your browser and keeping all the default settings
+- using a different device to take the test
+If you still have issues signing in, email the address in your test invitation.
+### Test link
+Changing the email that receives the test link
+If you want to change your email address before you receive the invitation, use our web form.
+#### If you want to change your email address after you receive the invitation
+If you've already received your invitation, email the address in your invitation, and include your application number and unique client identifier (UCI).
+It will take time for us to update your email. Continue to check your previous email address.
+If you have a representative but want the test link sent to your email, follow these instructions:
+- Login to the online test.
+- Select the "Email me the test link" button, and you'll see the option to update the email address.
+- Select "Yes, I want to use my email address (new email)," and provide the required information.
+- You'll need to know your representative's email; this should be the email they used to forward your invitation to you.
+If you don't receive the test link
+It may take a few minutes for you or your representative to receive the test link. To see if you received it, check
+- for messages from an email address ending in "@cic.gc.ca"
+- your email junk or spam folder
+If you don't get the test link and your representative doesn't either, follow these steps:
+- Check your spam or junk folder.
+- Add the test link email address to your "safe senders" list: notifications@ct-tc.apps.cic.gc.ca.
+- Request the link again by clicking on the "Resend the test link" button.
+- Make sure you're using Chrome or Safari, and turn off any virtual private networks (VPNs).
+If you still don't get the test link, email the address in your test invitation and include
+- a detailed explanation of the issue
+- your application number
+- your unique client identifier (UCI)
+### Webcam and photos
+Webcam can't connect to the online test system
+If your webcam isn't working and can't connect to the online test system, find help related to using
+- the Chrome browser
+- You can't take the test with Chrome on an iPad at this time.
+- the Chrome operating system (OS) and Chromebook
+- the Mac OS and Safari browser
+- Windows 7
+- Windows 8
+- Windows 10
+- Windows 11
+- a tablet
+## Fixing webcam issues in a tablet
+Option 1
+- Close all other applications and web pages that you won't use for the test.
+- Click "ok" if you see an error message on the test web page or refresh the page.
+- Sign in to the test again (opens in a new tab)
+Option 2
+- Reset or restart your tablet.
+- Sign in to the test again (opens in a new tab)
+If your webcam is working, but it can't connect to the online test system, you may see this error message:
+"We could not connect to your webcam for monitoring, please check your webcam and Internet connection and try again."
+Follow these steps:
+- Try using a different device to take the test.
+- If you can't return to the test within 45 minutes, email the address in your test invitation and include
+- a detailed explanation of the issue and how you tried to fix it
+- whether you have a different device to take the test
+- your application number
+- your unique client identifier (UCI)
+We'll reschedule your test once we've reviewed your email. It usually takes 4 to 8 weeks to reschedule your test, but it may take longer.
+Taking clear photos
+Your photos must be clear and easy to see. Make sure that the information on your ID is easy to read.
+If either the photo of your personal ID or of your face is unclear
+- move your ID closer to the webcam
+- change your webcam setting or brightness
+- adjust the lighting of you test location or
+- use a different device
+If we can't clearly see your photos, your test result may be invalid, and you may have to take the test again.
+Accidentally taking a photo of your face instead of your identification (ID)
+If you accidentally took a picture of your face instead of your photo ID, you don't have to contact us. We'll review your test result and contact you with your next steps.
+Depending on the result of our review, your test result may be invalid, and we may send you a new invitation. If you have to take the test again, it can take a few weeks or months to schedule it.
+Black or static image on webcam during the test
+If your webcam shows a black or static image during the test, follow these steps:
+- Try using a different device to take the test.
+- If you can't return to the test within 45 minutes, email the address in your test invitation and include
+- a detailed explanation of the issue and how you tried to fix it
+- whether you have a different device to take the test
+- your application number
+- your unique client identifier (UCI)
+We'll reschedule your test once we've reviewed your email. It usually takes 4 to 8 weeks to reschedule your test, but it may take longer.
+Retaking photos
+If your photo is not clear, select the "Retake" button before you approve it.
+If you approved the photo, you can still retake it if you haven't started the test yet. In this case, you must get a new test link by following these steps:
+- Wait for at least 15 minutes until your test link expires.
+- Sign in again using your application number and unique client identifier (UCI).
+- Request a new test link after accepting the terms.
+- Retake your photo and take the test.
+If you already started the test, you cannot retake your photo.
+If you can't retake your photo, email the address in your test invitation and include
+- a detailed explanation of the issue
+- your application number
+- your unique client identifier (UCI)
+### Other technical issues
+Microsoft Teams help
+If you need help with Microsoft Teams, contact the office that sent you the test invitation by replying to your invitation email. In your email, include
+- a detailed explanation of how you need help
+- your application number
+- your unique client identifier (UCI)
+If you closed the test by mistake
+If you closed the test by mistake, sign in again as soon as possible.
+Even if you left in the middle of your test, the 45-minute timer will continue. When 45 minutes have passed, the system will automatically submit your test with any answers you selected.
+If you're not able to complete the test due to technical issues or emergencies, you may have to
+- do an interview with our officer
+- retake the test by videoconference, if necessary
+If you're disconnected during the test or can't finish it due to technical issues
+If you're disconnected during the online test, use the most recent test link we sent you to return to the test as soon as possible. You may have to sign in again and request a new link if the test link expired.
+The 45-minute timer continues while you're disconnected. If you go past the 45-minute time limit while disconnected, our system will automatically submit your test and all the answers you selected up to that point.
+You won't see your test result when you sign in. To get your result, email the address in your test invitation and include
+- a detailed explanation of the issue
+- your application number
+- your unique client identifier (UCI)
+You have 30 days from the start date in your invitation to contact us.
+If needed, we'll reschedule your test once we've reviewed your email. It usually takes 4 to 8 weeks to reschedule your test, but it may take longer.
+For your rescheduled test, you may have to
+- do an interview with our officer or
+- retake the test by video conference, if necessary
+##
+-
+## Page details
+2026-03-31

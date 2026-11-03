@@ -1,0 +1,51 @@
+{
+  "name": "citizenship",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "tsc -b && vp build",
+    "curriculum:check": "jiti scripts/check-curriculum.mts",
+    "curriculum:logic": "jiti scripts/check-curriculum-logic.mts",
+    "curriculum:audit": "jiti scripts/audit-questions.mts",
+    "eligibility:check": "jiti scripts/check-eligibility.mts",
+    "routes:check": "jiti scripts/check-routes.mts",
+    "sync:check": "jiti scripts/check-sync.mts",
+    "sync:deploy": "pnpm dlx wrangler@4 deploy -c worker/wrangler.jsonc",
+    "verify": "vp check && pnpm curriculum:check && pnpm curriculum:logic && pnpm eligibility:check && pnpm routes:check && pnpm sync:check && pnpm build",
+    "curriculum:fetch": "python3 scripts/fetch-corpus.py",
+    "preview": "vp preview",
+    "media:capture": "node scripts/capture-media.mjs"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.7.0",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cn": "^0.5.1",
+    "lucide-react": "^1.38.0",
+    "motion": "^14.9.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router": "^8.3.1",
+    "shadcn": "^4.19.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.3",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@shadcn/lint": "^0.2.3",
+    "@soleone/showcase": "github:Soleone/showcase#9cd8c4f",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.1.0",
+    "jiti": "^2.7.0",
+    "knip": "^6.44.1",
+    "typescript": "~6.0.2",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

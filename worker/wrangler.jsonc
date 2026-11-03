@@ -1,0 +1,9 @@
+// The household sync API. The app itself is static and hosted elsewhere.
+// Deploy: pnpm sync:deploy. The key is set once with `wrangler secret put HOUSEHOLD_KEY -c worker/wrangler.jsonc`.
+{
+  "name": "civic-relay-sync",
+  "main": "index.ts",
+  "compatibility_date": "2026-10-01",
+  "durable_objects": { "bindings": [{ "name": "HOUSEHOLD", "class_name": "Household" }] },
+  "migrations": [{ "tag": "household", "new_sqlite_classes": ["Household"] }],
+}

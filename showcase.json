@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Soleone/showcase/main/schema/showcase.schema.json",
+  "title": "Citizenship",
+  "pitch": "A local-first, two-person study desk for the Canadian citizenship test.",
+  "description": "Turns Discover Canada into 60-odd short sessions with quick checks, chapter tests and a timed mock exam, schedules misses for spaced review, and checks every question against a verbatim quote from the guide.",
+  "kind": "web-app",
+  "stage": "product",
+  "year": 2026,
+  "tech": ["TypeScript", "React", "Vite", "Cloudflare Workers"],
+  "repo": "https://github.com/Soleone/citizenship",
+  "live": "https://citizenship.soleone.xyz",
+  "brand": {
+    "icon": "public/maple-leaf.svg",
+    "colors": ["#d52b1e"]
+  },
+  "media": {
+    "hero": "docs/media/hero.png",
+    "motion": "docs/media/demo.webp",
+    "capture": "pnpm build && pnpm media:capture"
+  },
+  "demo": {
+    "strategy": "hosted",
+    "local": "pnpm dev",
+    "externals": [
+      {
+        "name": "Household sync",
+        "type": "service",
+        "seam": "the household key a device joins with through #join=<key>; without one, useHouseholdSync in src/sync.ts never calls the Worker",
+        "standIn": "omitted",
+        "note": "Progress stays in your browser. Sharing it between devices needs your own household Worker."
+      }
+    ]
+  }
+}

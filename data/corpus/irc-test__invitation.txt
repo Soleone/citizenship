@@ -1,0 +1,75 @@
+#
+-
+-
+-
+-
+-
+-
+# Wait for a test invitation
+You need an invitation to take the test online.
+## On this page
+- What's on the invitation
+- When you'll get a test invitation
+- How you'll get the invitation
+- When you can take the test
+- How to reschedule the test
+## What's on the invitation
+We'll send you an invitation by email to take the online test after you submit your citizenship application. The test invitation is a PDF attachment in an email. The PDF includes instructions on what to do before, during and after the test.
+Your invitation should have
+- a test start date and end date (you'll have 30 days to take it)
+- a link to the test (or directions for an in-person test)
+- your application number
+- your unique client identifier (UCI)
+- an email address you can use to contact us
+Online test only: If the time between the start and end dates in your invitation is not 30 days
+If the time between the start date and the end date of your test is not 30 days, email us
+- a detailed explanation of the issue
+- a screenshot or attachment of your test invitation
+- your application number
+- your unique client identifier (UCI)
+Use the email address we provided in your invitation.
+## When you'll get a test invitation
+Most people get the invitation 1 to 3 months after they receive the acknowledgment of receipt of their application (AOR).
+The wait time for an invitation also depends on your situation and our current processing times. For example, you may wait longer if your application is non-routine.
+You must wait until you receive your invitation before you can take the test. You can't book the test yourself or contact us to get an invitation. We'll send the invitation as quickly as possible.
+You can check your application status to confirm that your invitation is on its way. When you check, go to the "Citizenship test" section of the status tracker. The In progress status means that
+- we have scheduled your test
+- you'll get your invitation soon
+Check your application status
+If you haven't received an invitation by the start date in the status tracker
+If your application status says you've been scheduled for an online test, but you haven't received an invitation yet, you should get it soon. They usually arrive at least 2 to 3 business days before your test start date.
+If it's less than 2 to 3 business days before the start date, send an an email to IRCC.CitOnlineTest-TestenligneCit-IRCC@cic.gc.ca with
+- a detailed explanation of the issue
+- your application number
+- your unique client identifier (UCI)
+## How you'll get the invitation
+If you gave an email address in your application, we'll send you or your representative the invitation by email.
+To avoid missing our emails
+- check your junk or spam folder
+- look for an invitation from an email address that ends in "@cic.gc.ca" or "@canada.ca"
+If you or your representative did not give an email address in your application you can provide your email using our web form. If you don't provide an email
+- we'll mail the invitation to you or
+- we may call you (check your voicemail messages regularly)
+## When you can take the test
+If you take the test online, you can take your test only between the start date and end date provided on your invitation. This will be a 30-day period.
+After you receive your invitation, you
+- have up to 3 chances to pass the test during the 30-day period
+- If you fail, log in and try again to use your chances.
+- can take the test at any time during the 30-day period (including weekends and holidays)
+You can't sign in to the test
+- before or after the 30-day period on your invitation or
+- after you submit the test
+### If you're taking the test in person or on Microsoft Teams
+If you take the test in person or on Microsoft Teams, your invitation will include the details, for example, the time and location. If you fail the test, you'll get a new invitation for another time.
+## How to reschedule the test
+If you need to reschedule the test, email the address in the rescheduling section of your test invitation. In your email, include
+- a detailed explanation of why you need to reschedule your test
+- your application number
+- your unique client identifier (UCI)
+It usually takes 4 to 8 weeks to reschedule your test, but it may take longer.
+### Urgent processing for emergencies
+If you need to take the test before the 30-day period on your invitation due to an emergency, check if you qualify for urgent processing.
+##
+-
+## Page details
+2026-03-31
