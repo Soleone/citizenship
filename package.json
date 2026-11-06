@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@shadcn/lint": "^0.2.3",
-    "@soleone/showcase": "github:Soleone/showcase#9cd8c4f",
+    "@soleone/showcase-capture": "^0.1.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
