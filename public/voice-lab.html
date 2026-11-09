@@ -84,12 +84,18 @@
         align-items: center;
         padding: 6px 0;
       }
-      #status {
-        font-size: 1.6rem;
-        font-weight: 600;
-        min-height: 2.2rem;
+      #step {
+        color: var(--muted);
+        min-height: 1.4rem;
       }
-      #heard {
+      #prompt {
+        font-size: 2.6rem;
+        font-weight: 700;
+        line-height: 1.15;
+        min-height: 3.2rem;
+        margin: 8px 0;
+      }
+      #status {
         font-size: 1.1rem;
         min-height: 1.6rem;
       }
@@ -108,6 +114,9 @@
         padding: 4px 0;
         border-bottom: 1px solid var(--line);
       }
+      small {
+        color: var(--muted);
+      }
       code {
         font-size: 0.85rem;
       }
@@ -116,10 +125,7 @@
   <body>
     <main>
       <h1>Voice lab</h1>
-      <p>
-        Say a command after the beep: A, B, C, D, true, false, repeat, next, pause, why, I don't
-        know, or an answer like "Louis Riel".
-      </p>
+      <p>Start the test, then say each word on screen after the beep. It moves on by itself.</p>
 
       <section>
         <div id="support"></div>
@@ -132,19 +138,19 @@
 
       <section>
         <div class="row">
-          <button class="main" id="once">Listen once</button>
-          <button id="loop">Hands-free loop</button>
+          <button class="main" id="start">Start test</button>
+          <button id="once">Say anything</button>
         </div>
-        <label><input type="checkbox" id="echo" checked /> Say what it heard (for the car)</label>
-        <div id="status">Ready</div>
-        <div id="heard"></div>
+        <div id="step"></div>
+        <div id="prompt"></div>
+        <div id="status"></div>
       </section>
 
       <section>
         <div class="row">
           <strong>Results</strong> <span id="score"></span> <button id="copy">Copy</button>
         </div>
-        <ol id="log" reversed></ol>
+        <ol id="log"></ol>
       </section>
     </main>
     <script>
@@ -152,22 +158,45 @@
       const $ = (id) => document.getElementById(id);
       const lang = "en-CA";
       const options = ["Louis Riel", "John A. Macdonald", "Samuel de Champlain", "Laura Secord"];
-      const results = [];
 
-      // What a heard phrase means, in the order the app would check it.
+      // What to say, and the command the app should hear. Letters come twice, in a
+      // different order, because B/D and C/"see" are the likely confusions.
+      const prompts = [
+        ["A", "A"],
+        ["B", "B"],
+        ["C", "C"],
+        ["D", "D"],
+        ["True", "true"],
+        ["False", "false"],
+        ["Repeat", "repeat"],
+        ["Next", "next"],
+        ["Why", "why"],
+        ["I don't know", "skip"],
+        ["Louis Riel", "answer: Louis Riel"],
+        ["D", "D"],
+        ["B", "B"],
+        ["Pause", "pause"],
+        ["C", "C"],
+        ["A", "A"],
+        ["Laura Secord", "answer: Laura Secord"],
+        ["What can I say", "help"],
+        ["Continue", "next"],
+        ["Samuel de Champlain", "answer: Samuel de Champlain"],
+      ];
+
       const commands = [
         ["A", /^(a|ay|eh|hey|option a|letter a)$/],
         ["B", /^(b|be|bee|option b|letter b)$/],
         ["C", /^(c|see|sea|si|option c|letter c)$/],
-        ["D", /^(d|dee|the|option d|letter d)$/],
+        ["D", /^(d|dee|option d|letter d)$/],
         ["true", /^(true|that's true|it's true)$/],
         ["false", /^(false|that's false|it's false)$/],
-        ["repeat", /^(repeat|again|say (it|that) again|what)$/],
+        ["repeat", /^(repeat|again|say (it|that) again)$/],
         ["next", /^(next|continue|go on|okay|ok)$/],
         ["pause", /^(pause|stop|wait)$/],
         ["resume", /^(resume|go|start)$/],
         ["why", /^(why|explain|how come)$/],
-        ["skip", /^(i don't know|don't know|no idea|skip|pass)$/],
+        ["skip", /^(i don't know|don't know|i dont know|no idea|skip|pass)$/],
         ["help", /^(what can i say|help)$/],
       ];
       const clean = (s) =>
@@ -195,7 +224,7 @@
             '<span class="bad">No speech recognition in this browser.</span>';
           return;
         }
-        const parts = [`Recognition: <span class="ok">yes</span>`];
+        const parts = ['Recognition: <span class="ok">yes</span>'];
         if (Recognition.available) {
           const state = await Recognition.available({ langs: [lang], processLocally: true });
           parts.push(`On-device for ${lang}: <strong>${state}</strong>`);
@@ -227,16 +256,7 @@
         osc.connect(gain).connect(audio.destination);
         osc.start();
         osc.stop(audio.currentTime + 0.15);
-        return new Promise((r) => setTimeout(r, 200));
-      }
-      function say(text) {
-        if (!$("echo").checked) return Promise.resolve();
-        return new Promise((resolve) => {
-          const u = new SpeechSynthesisUtterance(text);
-          u.lang = lang;
-          u.onend = u.onerror = resolve;
-          speechSynthesis.speak(u);
-        });
+        return new Promise((r) => setTimeout(r, 250));
       }
 
       function listen() {
@@ -247,7 +267,6 @@
           r.interimResults = false;
           r.continuous = false;
           if ($("local").checked) r.processLocally = true;
-          const started = performance.now();
           let speechEnd = null,
             done = false;
           const finish = (value) => {
@@ -259,103 +278,115 @@
           r.onspeechend = () => {
             speechEnd = performance.now();
           };
-          r.onresult = (e) => {
-            const alts = [...e.results[0]].map((a) => ({
-              text: a.transcript,
-              confidence: a.confidence,
-            }));
+          r.onresult = (e) =>
             finish({
-              alts,
+              heard: [...e.results[0]].map((a) => a.transcript),
               wait: speechEnd ? Math.round(performance.now() - speechEnd) : null,
-              total: Math.round(performance.now() - started),
             });
-          };
           r.onerror = (e) => finish({ error: e.error });
           r.onend = () => finish({ error: "nothing heard" });
           r.start();
         });
       }
 
-      async function turn() {
+      const results = [];
+      function record(entry) {
+        results.push(entry);
+        const li = document.createElement("li");
+        const verdict = entry.expected
+          ? entry.command === entry.expected
+            ? '<strong class="ok">✓</strong>'
+            : '<strong class="bad">✗</strong>'
+          : `<strong>${entry.command ?? "no match"}</strong>`;
+        const said = entry.error
+          ? `<span class="bad">${entry.error}</span>`
+          : `"${entry.heard[0]}"`;
+        const others =
+          entry.heard?.length > 1
+            ? ` <small>(also ${entry.heard
+                .slice(1)
+                .map((h) => `"${h}"`)
+                .join(", ")})</small>`
+            : "";
+        li.innerHTML = `${verdict} ${entry.say ? `<b>${entry.say}</b> → ` : ""}${said}${others} <small>· ${entry.wait ?? "?"} ms${entry.local ? " · on-device" : ""}</small>`;
+        $("log").prepend(li);
+        const graded = results.filter((r) => r.expected);
+        const right = graded.filter((r) => r.command === r.expected).length;
+        const waits = results
+          .map((r) => r.wait)
+          .filter(Boolean)
+          .sort((a, b) => a - b);
+        $("score").textContent =
+          `${graded.length ? `${right} of ${graded.length} right` : ""}${waits.length ? ` · typical wait ${waits[Math.floor(waits.length / 2)]} ms` : ""}`;
+      }
+
+      async function attempt(say, expected) {
         $("status").textContent = "Listening...";
-        $("heard").textContent = "";
         await beep();
         const result = await listen();
-        const command = result.alts ? match(result.alts.map((a) => a.text)) : null;
-        const entry = {
-          ...result,
-          command,
-          local: $("local").checked,
-          at: new Date().toLocaleTimeString(),
-        };
-        results.unshift(entry);
-        render(entry);
-        if (result.error) {
-          $("status").innerHTML = `<span class="bad">${result.error}</span>`;
-          await say("Didn't catch that.");
-        } else if (command) {
-          $("status").innerHTML = `<span class="ok">${command}</span>`;
-          await say(`Heard ${command.replace("answer: ", "")}.`);
-        } else {
-          $("status").innerHTML = '<span class="bad">no match</span>';
-          await say(`Heard ${result.alts[0].text}. No match.`);
-        }
-        return entry;
+        const command = result.heard ? match(result.heard) : null;
+        const entry = { say, expected, ...result, command, local: $("local").checked };
+        record(entry);
+        $("status").innerHTML = result.error
+          ? `<span class="bad">${result.error}</span>`
+          : `<span class="${!expected || command === expected ? "ok" : "bad"}">Heard "${result.heard[0]}"${command ? ` = ${command}` : ""}</span>`;
       }
 
-      function render(entry) {
-        if (entry.alts)
-          $("heard").textContent = entry.alts
-            .map((a) => `"${a.text}" ${a.confidence ? a.confidence.toFixed(2) : ""}`)
-            .join("  ·  ");
-        const li = document.createElement("li");
-        li.innerHTML = entry.error
-          ? `<span class="bad">${entry.error}</span> <small>${entry.at}${entry.local ? " · on-device" : ""}</small>`
-          : `<strong class="${entry.command ? "ok" : "bad"}">${entry.command ?? "no match"}</strong> from "${entry.alts[0].text}" <small>· ${entry.wait ?? "?"} ms after you stopped · ${entry.at}${entry.local ? " · on-device" : ""}</small>`;
-        $("log").prepend(li);
-        const heard = results.filter((r) => r.command).length;
-        $("score").textContent = `${heard} of ${results.length} understood`;
-      }
-
-      $("once").onclick = async () => {
-        $("once").disabled = true;
-        await turn();
-        $("once").disabled = false;
-      };
-
-      // Keeps listening until "pause" or three silent turns in a row, like the real loop would.
-      let looping = false,
+      let running = false,
         wakeLock = null;
-      function setLooping(on) {
-        looping = on;
-        $("loop").textContent = on ? "Stop loop" : "Hands-free loop";
+      function setRunning(on) {
+        running = on;
+        $("start").textContent = on ? "Stop" : "Start test";
         $("once").disabled = on;
         if (!on) {
           wakeLock?.release();
           wakeLock = null;
+          $("step").textContent = "";
+          $("prompt").textContent = "";
         }
       }
-      $("loop").onclick = async () => {
-        if (looping) return setLooping(false);
-        setLooping(true);
+      $("start").onclick = async () => {
+        if (running) return setRunning(false);
+        setRunning(true);
         try {
           wakeLock = await navigator.wakeLock?.request("screen");
         } catch {}
-        let misses = 0;
-        while (looping) {
-          const entry = await turn();
-          misses = entry.error ? misses + 1 : 0;
-          if (entry.command === "pause" || misses >= 3) {
-            setLooping(false);
-            await say("Paused.");
-          }
-          await new Promise((r) => setTimeout(r, 400));
+        for (const [i, [say, expected]] of prompts.entries()) {
+          if (!running) return;
+          $("step").textContent = `${i + 1} of ${prompts.length}. Say:`;
+          $("prompt").textContent = say;
+          await new Promise((r) => setTimeout(r, 600));
+          if (!running) return;
+          await attempt(say, expected);
+          await new Promise((r) => setTimeout(r, 900));
         }
+        setRunning(false);
+        $("status").textContent = "Done. Tap Copy and paste the results.";
+      };
+
+      $("once").onclick = async () => {
+        $("once").disabled = true;
+        $("prompt").textContent = "Say anything";
+        await attempt(null, null);
+        $("prompt").textContent = "";
+        $("once").disabled = false;
       };
 
       $("copy").onclick = () =>
         navigator.clipboard
-          .writeText(JSON.stringify({ ua: navigator.userAgent, results }, null, 1))
+          .writeText(
+            JSON.stringify({
+              ua: navigator.userAgent,
+              results: results.map(({ say, heard, error, command, wait, local }) => ({
+                say,
+                heard,
+                error,
+                command,
+                wait,
+                local,
+              })),
+            }),
+          )
           .then(() => {
             $("copy").textContent = "Copied";
           });
