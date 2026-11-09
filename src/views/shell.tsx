@@ -57,6 +57,7 @@ import {
   type View,
 } from "@/state";
 import { householdLink, type SyncStatus } from "@/sync";
+import { saying } from "@/listen";
 import { toggleVoice, useVoice } from "@/voice";
 import { navItems } from "./nav";
 
@@ -107,6 +108,15 @@ export function PlayBar({
 
 /** Voice mode on and off, and what it is doing: loading, speaking or listening. */
 export function VoiceToggle() {
+  return (
+    <>
+      <VoiceButton />
+      <VoiceListening />
+    </>
+  );
+}
+
+function VoiceButton() {
   const voice = useVoice();
   const on = voice.kind !== "off";
   const icon = {
@@ -115,6 +125,7 @@ export function VoiceToggle() {
     idle: <Headphones />,
     speaking: <AudioLines />,
     listening: <Mic />,
+    thinking: <LoaderCircle className="animate-spin" />,
   }[voice.kind];
   return (
     <Button
@@ -127,6 +138,35 @@ export function VoiceToggle() {
       {icon}
       {voice.kind === "loading" && `${Math.round(voice.percent)}%`}
     </Button>
+  );
+}
+
+/** While the mic is open: a bar you can see from the driver's seat, with what you can say. */
+function VoiceListening() {
+  const voice = useVoice();
+  if (voice.kind !== "listening" && voice.kind !== "thinking") return null;
+  // True/false questions also take Alpha and Bravo, but showing those would only confuse.
+  const commands =
+    voice.kind === "listening"
+      ? voice.commands.filter((c) => !(voice.commands.includes("true") && (c === "A" || c === "B")))
+      : [];
+  return (
+    <div
+      role="status"
+      className="fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 bg-primary px-4 py-6 text-primary-foreground shadow-lg animate-in slide-in-from-bottom-4"
+    >
+      <span className="flex items-center gap-2 text-2xl font-semibold">
+        {voice.kind === "listening" ? (
+          <Mic className="size-6 animate-pulse" />
+        ) : (
+          <LoaderCircle className="size-6 animate-spin" />
+        )}
+        {voice.kind === "listening" ? "Speak now" : "Got it"}
+      </span>
+      {voice.kind === "listening" && (
+        <span className="text-base capitalize">{commands.map(saying).join(" · ")}</span>
+      )}
+    </div>
   );
 }
 

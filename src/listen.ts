@@ -8,7 +8,7 @@
  */
 
 import type { AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
-import { play } from "./juice.ts";
+import { cue } from "./juice.ts";
 
 export type Command = "A" | "B" | "C" | "D" | "true" | "false" | "next" | "repeat";
 
@@ -22,6 +22,9 @@ const SAYINGS: Record<Command, string[]> = {
   next: ["next", "continue", "go on"],
   repeat: ["repeat", "again"],
 };
+
+/** The main word for a command, as shown while listening. */
+export const saying = (command: Command) => SAYINGS[command][0];
 
 let recognizer: Promise<AutomaticSpeechRecognitionPipeline> | null = null;
 
@@ -50,16 +53,18 @@ export function loadRecognizer(onProgress: (percent: number) => void = () => {})
 }
 
 const RATE = 16_000;
+const FLOOR_MS = 150; // room noise, measured before the beep while nobody talks yet
+const BEEP_MS = 200;
 const QUIET_MS = 700; // this much silence after speech ends the answer
-const WAIT_MS = 5000; // nobody spoke
-const LONGEST_MS = 6000;
+const WAIT_MS = 8000; // nobody spoke
+const LONGEST_MS = 10_000;
 
 /**
  * One answer from the mic, or null when nobody spoke. The mic sends silence for
- * a moment after it opens, so the beep waits for real sound, and the noise floor
- * is measured once the beep has passed.
+ * a moment after it opens, so the beep waits for real sound; `onOpen` fires with
+ * the beep. A low tone closes the window.
  */
-async function record(signal: AbortSignal): Promise<Float32Array | null> {
+async function record(signal: AbortSignal, onOpen: () => void): Promise<Float32Array | null> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const context = new AudioContext({ sampleRate: RATE });
   const source = context.createMediaStreamSource(stream);
@@ -69,6 +74,7 @@ async function record(signal: AbortSignal): Promise<Float32Array | null> {
 
   return new Promise((resolve) => {
     let live: number | null = null;
+    let open = false;
     let floor = 0;
     let spoke = false;
     let quiet = 0;
@@ -84,6 +90,7 @@ async function record(signal: AbortSignal): Promise<Float32Array | null> {
       source.disconnect();
       for (const track of stream.getTracks()) track.stop();
       void context.close();
+      if (open && !signal.aborted) cue("micClosed");
       if (!spoke || signal.aborted) return resolve(null);
       const audio = new Float32Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
       chunks.reduce((at, chunk) => (audio.set(chunk, at), at + chunk.length), 0);
@@ -98,13 +105,17 @@ async function record(signal: AbortSignal): Promise<Float32Array | null> {
       if (live === null) {
         if (rms < 1e-5) return;
         live = 0;
-        play("listen");
       }
       live += ms;
-      if (live < 300) return; // the beep
+      if (live <= FLOOR_MS) return void (floor = Math.max(floor, rms));
+      if (!open) {
+        open = true;
+        cue("micOpen");
+        onOpen();
+      }
+      if (live < FLOOR_MS + BEEP_MS) return; // the beep itself
       chunks.push(data);
       heard += ms;
-      if (heard < 150) return void (floor = Math.max(floor, rms));
       if (rms > Math.min(Math.max(floor * 3, 0.01), 0.05)) {
         spoke = true;
         quiet = 0;
@@ -118,11 +129,16 @@ async function record(signal: AbortSignal): Promise<Float32Array | null> {
 }
 
 /** Listens once and returns which of `commands` was said, or null. */
-export async function hear(commands: Command[], signal: AbortSignal) {
+export async function hear(
+  commands: Command[],
+  signal: AbortSignal,
+  onPhase: (phase: "listening" | "thinking") => void,
+) {
   const model = await loadRecognizer();
-  const audio = await record(signal);
+  const audio = await record(signal, () => onPhase("listening"));
   signal.throwIfAborted();
   if (!audio) return null;
+  onPhase("thinking");
   const output = await model(audio);
   signal.throwIfAborted();
   return match((Array.isArray(output) ? output[0] : output).text, commands);

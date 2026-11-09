@@ -14,7 +14,8 @@ import { say } from "./speak.ts";
 export type VoiceStatus =
   | { kind: "off" }
   | { kind: "loading"; percent: number }
-  | { kind: "idle" | "speaking" | "listening" };
+  | { kind: "idle" | "speaking" | "thinking" }
+  | { kind: "listening"; commands: Command[] };
 
 let status: VoiceStatus = { kind: "off" };
 const listeners = new Set<() => void>();
@@ -81,7 +82,12 @@ export function useVoiceTurn(step: string, turn: (voice: Voice) => Promise<void>
     const { signal } = controller;
     const voice: Voice = {
       say: (text) => (setStatus({ kind: "speaking" }), say(text, signal)),
-      hear: (commands) => (setStatus({ kind: "listening" }), hear(commands, signal)),
+      hear: (commands) => {
+        setStatus({ kind: "idle" }); // the mic takes a moment to open
+        return hear(commands, signal, (kind) =>
+          setStatus(kind === "listening" ? { kind, commands } : { kind }),
+        );
+      },
       stop: () => void toggleVoice(),
     };
     run(voice)

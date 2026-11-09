@@ -43,17 +43,25 @@ const SOUNDS = {
   win: () =>
     [523, 659, 784, 1047].forEach((freq, index) => tone(freq, index * 0.09, 0.25, "triangle")),
   tick: () => tone(1200, 0, 0.04, "square", 0.03),
-  listen: () => tone(880, 0, 0.15),
+  micOpen: () => tone(880, 0, 0.15, "sine", 0.2),
+  micClosed: () => tone(440, 0, 0.15, "sine", 0.2),
 };
 
 export type SoundName = keyof typeof SOUNDS;
 
-export function play(name: SoundName) {
-  if (muted || typeof window === "undefined") return;
+function sound(name: SoundName) {
+  if (typeof window === "undefined") return;
   audio ??= new AudioContext();
   if (audio.state === "suspended") void audio.resume();
   SOUNDS[name]();
 }
+
+export function play(name: SoundName) {
+  if (!muted) sound(name);
+}
+
+/** Voice mode's mic tones. They say when you can talk, so the mute switch doesn't silence them. */
+export const cue = (name: "micOpen" | "micClosed") => sound(name);
 
 const COLORS = ["#e46a52", "#f0b84b", "#9ed8d4", "#3d8d72", "#d52b1e", "#ffffff"];
 
