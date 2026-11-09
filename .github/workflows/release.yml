@@ -1,0 +1,72 @@
+name: Release
+
+# `pnpm release` pushes a v* tag; this builds the signed APK and publishes it with the version's
+# changelog notes. The app loads the live site, so a release is only needed when src-tauri changes.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android:
+    name: Build and publish Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.18.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platform-tools build-tools;36.0.0 ndk;27.3.13750724"
+      - name: Set up Android Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add aarch64-linux-android
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.3.13750724" >> "$GITHUB_ENV"
+          echo "DATA=$RUNNER_TEMP/citizenship-release" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: pnpm install --frozen-lockfile
+      - name: Restore Android signing files
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PROPERTIES: ${{ secrets.ANDROID_KEYSTORE_PROPERTIES }}
+        run: |
+          umask 077
+          mkdir -p "$DATA/secrets/citizenship"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$DATA/secrets/citizenship/android.jks"
+          printf '%s\n' "$ANDROID_KEYSTORE_PROPERTIES" > "$DATA/secrets/citizenship/android.properties"
+      - run: pnpm build:android
+      - name: Remove signing files
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/citizenship-release"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          apk="Citizenship-$version-Android.apk"
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk "$apk"
+          # The version's section of CHANGELOG.md, without its heading.
+          awk -v v="$version" '/^## /{on = index($0, "[" v "]") > 0; next} on' CHANGELOG.md > notes.md
+          gh release create "$TAG" "$apk" --verify-tag --title "Citizenship $version" --notes-file notes.md

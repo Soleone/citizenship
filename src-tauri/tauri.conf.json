@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Citizenship",
-  "version": "0.1.0",
+  "version": "../package.json",
   "identifier": "com.soleone.citizenship",
   "build": {
     "frontendDist": "https://citizenship.soleone.xyz"

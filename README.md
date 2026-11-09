@@ -73,7 +73,9 @@ Every push to `main` deploys the app to https://citizenship.soleone.xyz through 
 
 `src-tauri/` is a Tauri shell that opens https://citizenship.soleone.xyz, so a push to `main` updates it too. Its one native part is the mic (`MicPlugin.kt`): a web page that opens the mic puts Android in call mode, which garbles playback and switches Bluetooth to its phone-call sound. The native mic records from the phone's own mic without that, so in the app a long line listens for "pause" or "stop" while it plays. On the web, the mic only opens between lines.
 
-`pnpm build:android` builds the signed APK (about 11 MB), with the key from `$DATA/secrets/citizenship`. Rebuild it only when something in `src-tauri/` changes. The app keeps its own storage, so paste the household link under Settings once.
+`pnpm build:android` builds the signed APK (about 11 MB) locally, with the key from `$DATA/secrets/citizenship`. The app keeps its own storage, so paste the household link under Settings once.
+
+`pnpm release` publishes a new APK. Run it on a clean `main` and pick patch, minor or major. It adds the `feat`, `fix` and `perf` commits since the last release to `CHANGELOG.md`, commits, tags `vX.Y.Z` and pushes. The tag starts `.github/workflows/release.yml`, which builds the signed APK and publishes it at https://github.com/Soleone/citizenship/releases/latest. A release is only needed when `src-tauri/` changes. The workflow signs with the Actions secrets `ANDROID_KEYSTORE_BASE64` and `ANDROID_KEYSTORE_PROPERTIES`, copies of the key in `$DATA/secrets/citizenship`.
 
 `pnpm audio:upload` (or `pnpm audio:upload breeze`) copies the finished clips to the R2 bucket `citizenship-audio` behind the sync Worker, sending only the ones it doesn't have. Anyone can play a clip at `<SYNC_URL>/audio/<voice>/<clip id>.mp3`; uploading needs the household key.
 
