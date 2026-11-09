@@ -161,34 +161,49 @@
 
       // What to say, and the command the app should hear. Letters come twice, in a
       // different order, because B/D and C/"see" are the likely confusions.
+      // Single letters failed on the phones, so this round compares four ways of
+      // picking an answer. The command lines already worked and are left out.
       const prompts = [
         ["A", "A"],
+        ["Option B", "B"],
+        ["Three", "C"],
+        ["Delta", "D"],
         ["B", "B"],
+        ["Option D", "D"],
+        ["One", "A"],
+        ["Charlie", "C"],
         ["C", "C"],
+        ["Option A", "A"],
+        ["Four", "D"],
+        ["Bravo", "B"],
         ["D", "D"],
-        ["True", "true"],
-        ["False", "false"],
-        ["Repeat", "repeat"],
-        ["Next", "next"],
-        ["Why", "why"],
-        ["I don't know", "skip"],
-        ["Louis Riel", "answer: Louis Riel"],
-        ["D", "D"],
-        ["B", "B"],
-        ["Pause", "pause"],
-        ["C", "C"],
-        ["A", "A"],
-        ["Laura Secord", "answer: Laura Secord"],
-        ["What can I say", "help"],
-        ["Continue", "next"],
-        ["Samuel de Champlain", "answer: Samuel de Champlain"],
+        ["Option C", "C"],
+        ["Two", "B"],
+        ["Alpha", "A"],
       ];
+      const scheme = (say) =>
+        /^[A-D]$/.test(say)
+          ? "letter"
+          : say.startsWith("Option")
+            ? "option + letter"
+            : /^(One|Two|Three|Four)$/.test(say)
+              ? "number"
+              : "alpha bravo";
 
       const commands = [
-        ["A", /^(a|ay|eh|hey|option a|letter a)$/],
-        ["B", /^(b|be|bee|option b|letter b)$/],
-        ["C", /^(c|see|sea|si|option c|letter c)$/],
-        ["D", /^(d|dee|option d|letter d)$/],
+        [
+          "A",
+          /^(a|a\.|ay|eh|hey|8|option a|option eh|option hey|letter a|answer a|one|1|won|first|alpha|alfa)$/,
+        ],
+        [
+          "B",
+          /^(b|be|bee|option b|option be|option bee|letter b|answer b|two|2|to|too|second|bravo)$/,
+        ],
+        [
+          "C",
+          /^(c|see|sea|si|option c|option see|option sea|letter c|answer c|three|3|tree|third|charlie|charley)$/,
+        ],
+        ["D", /^(d|dee|option d|option dee|option the|letter d|answer d|four|4|for|fourth|delta)$/],
         ["true", /^(true|that's true|it's true)$/],
         ["false", /^(false|that's false|it's false)$/],
         ["repeat", /^(repeat|again|say (it|that) again)$/],
@@ -316,8 +331,15 @@
           .map((r) => r.wait)
           .filter(Boolean)
           .sort((a, b) => a - b);
+        const byScheme = Map.groupBy(graded, (r) => scheme(r.say));
+        const perScheme = [...byScheme]
+          .map(
+            ([name, rs]) =>
+              `${name} ${rs.filter((r) => r.command === r.expected).length}/${rs.length}`,
+          )
+          .join(" · ");
         $("score").textContent =
-          `${graded.length ? `${right} of ${graded.length} right` : ""}${waits.length ? ` · typical wait ${waits[Math.floor(waits.length / 2)]} ms` : ""}`;
+          `${graded.length ? `${right} of ${graded.length} right (${perScheme})` : ""}${waits.length ? ` · typical wait ${waits[Math.floor(waits.length / 2)]} ms` : ""}`;
       }
 
       async function attempt(say, expected) {
