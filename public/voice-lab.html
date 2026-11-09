@@ -138,9 +138,8 @@
         <label
           >Recognizer
           <select id="engine">
-            <option value="browser">Browser's own (Google)</option>
-            <option value="moonshine-tiny">Moonshine tiny, in the page (28 MB)</option>
             <option value="moonshine-base">Moonshine base, in the page (63 MB)</option>
+            <option value="browser">Browser's own (Google)</option>
           </select></label
         >
         <label
@@ -265,6 +264,53 @@
         return null;
       }
 
+      // When nothing matched exactly ("rather" for "Bravo"), take the closest phrase
+      // by spelling, but only when it clearly beats every other command.
+      const vocabulary = [
+        ["A", "alpha"],
+        ["B", "bravo"],
+        ["C", "charlie"],
+        ["D", "delta"],
+        ["true", "true"],
+        ["false", "false"],
+        ["repeat", "repeat"],
+        ["next", "next"],
+        ["next", "continue"],
+        ["pause", "pause"],
+        ["resume", "resume"],
+        ["why", "why"],
+        ["skip", "i don't know"],
+        ["skip", "skip"],
+        ["help", "what can i say"],
+        ...options.flatMap((o) => [
+          [`answer: ${o}`, clean(o)],
+          [`answer: ${o}`, clean(o).split(" ").at(-1)],
+        ]),
+      ];
+      function distance(a, b) {
+        let row = [...Array(b.length + 1).keys()];
+        for (let i = 1; i <= a.length; i++) {
+          const next = [i];
+          for (let j = 1; j <= b.length; j++)
+            next[j] = Math.min(row[j] + 1, next[j - 1] + 1, row[j - 1] + (a[i - 1] !== b[j - 1]));
+          row = next;
+        }
+        return row[b.length];
+      }
+      function closest(alternatives) {
+        for (const alt of alternatives) {
+          const said = clean(alt);
+          const scores = new Map();
+          for (const [name, phrase] of vocabulary) {
+            const score = 1 - distance(said, phrase) / Math.max(said.length, phrase.length);
+            scores.set(name, Math.max(scores.get(name) ?? 0, score));
+          }
+          const [[name, best], [, runnerUp]] = [...scores].sort((a, b) => b[1] - a[1]);
+          if (best >= 0.5 && best - runnerUp >= 0.15) return name;
+        }
+        return null;
+      }
+
       async function checkSupport() {
         if (!Recognition) {
           $("support").innerHTML =
@@ -354,18 +400,29 @@
         const node = ctx.createScriptProcessor(1024, 1, 1);
         const chunks = [];
         return new Promise((resolve) => {
-          let floor = 0,
+          // The mic sends silence for a moment after it opens, so the beep waits for
+          // real sound, and the noise floor is measured once the beep has passed.
+          let live = null,
+            floor = 0,
             spoke = false,
             quiet = 0,
             total = 0;
           node.onaudioprocess = (e) => {
             const data = new Float32Array(e.inputBuffer.getChannelData(0));
-            chunks.push(data);
             const rms = Math.sqrt(data.reduce((sum, x) => sum + x * x, 0) / data.length);
             const ms = (data.length / ctx.sampleRate) * 1000;
+            if (live === null) {
+              if (rms < 1e-5) return;
+              live = 0;
+              beep();
+              $("status").textContent = "Listening...";
+            }
+            live += ms;
+            if (live < 300) return; // the beep
+            chunks.push(data);
             total += ms;
-            if (total < 300) return void (floor = Math.max(floor, rms));
-            if (rms > Math.max(floor * 3, 0.01)) {
+            if (total < 150) return void (floor = Math.max(floor, rms));
+            if (rms > Math.min(Math.max(floor * 3, 0.01), 0.05)) {
               spoke = true;
               quiet = 0;
             } else if (spoke) quiet += ms;
@@ -387,7 +444,7 @@
 
       async function listenInPage(name) {
         const model = await loadAsr(name);
-        $("status").textContent = "Listening...";
+        $("status").textContent = "Opening the mic...";
         const audio = await recordSpeech();
         if (!audio) return { error: "nothing heard" };
         const start = performance.now();
@@ -446,7 +503,7 @@
                 .map((h) => `"${h}"`)
                 .join(", ")})</small>`
             : "";
-        li.innerHTML = `${verdict} ${entry.say ? `<b>${entry.say}</b> → ` : ""}${said}${others} <small>· ${entry.wait ?? "?"} ms · ${entry.engine}</small>`;
+        li.innerHTML = `${verdict} ${entry.say ? `<b>${entry.say}</b> → ` : ""}${said}${others}${entry.fuzzy ? " <small>(closest)</small>" : ""} <small>· ${entry.wait ?? "?"} ms · ${entry.engine}</small>`;
         $("log").prepend(li);
         const graded = results.filter((r) => r.expected);
         const right = graded.filter((r) => r.command === r.expected).length;
@@ -466,15 +523,19 @@
       }
 
       async function attempt(say, expected, playAfter = $("playAfter").checked) {
-        $("status").textContent = "Listening...";
-        await beep();
+        if ($("engine").value === "browser") {
+          $("status").textContent = "Listening...";
+          await beep();
+        }
         const result = await listen();
-        const command = result.heard ? match(result.heard) : null;
+        const exact = result.heard ? match(result.heard) : null;
+        const command = exact ?? (result.heard ? closest(result.heard) : null);
+        const fuzzy = !exact && Boolean(command);
         const engine =
           $("engine").value === "browser" && $("local").checked
             ? "browser, on-device"
             : $("engine").value;
-        const entry = { say, expected, ...result, command, engine };
+        const entry = { say, expected, ...result, command, fuzzy, engine };
         record(entry);
         $("status").innerHTML = result.error
           ? `<span class="bad">${result.error}</span>`
