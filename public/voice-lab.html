@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Voice lab</title>
     <!-- Throwaway spike for hands-free study (see the hands-free plan): can Chrome on
-     this phone recognise the quiz commands, on-device or not, and how fast. -->
+     this phone recognise the quiz commands, on-device or not, and how fast, and does a
+     clip sound clean right after listening. -->
     <style>
       :root {
         color-scheme: light dark;
@@ -134,6 +135,21 @@
           (<code>processLocally</code>)</label
         >
         <div class="row"><button id="install" hidden>Download the speech model</button></div>
+        <label
+          >Recognizer
+          <select id="engine">
+            <option value="browser">Browser's own (Google)</option>
+            <option value="moonshine-tiny">Moonshine tiny, in the page (28 MB)</option>
+            <option value="moonshine-base">Moonshine base, in the page (63 MB)</option>
+          </select></label
+        >
+        <label
+          >Mic
+          <select id="mic">
+            <option value="">Default</option>
+          </select></label
+        >
+        <label><input type="checkbox" id="playAfter" /> Play a clip after each answer</label>
       </section>
 
       <section>
@@ -179,36 +195,32 @@
       const lang = "en-CA";
       const options = ["Louis Riel", "John A. Macdonald", "Samuel de Champlain", "Laura Secord"];
 
-      // What to say, and the command the app should hear. Letters come twice, in a
-      // different order, because B/D and C/"see" are the likely confusions.
-      // Single letters failed on the phones, so this round compares four ways of
-      // picking an answer. The command lines already worked and are left out.
+      // What to say, and the command the app should hear: the vocabulary the app
+      // will use, so the recognizers can be compared on it.
       const prompts = [
-        ["A", "A"],
-        ["Option B", "B"],
-        ["Three", "C"],
-        ["Delta", "D"],
-        ["B", "B"],
-        ["Option D", "D"],
-        ["One", "A"],
-        ["Charlie", "C"],
-        ["C", "C"],
-        ["Option A", "A"],
-        ["Four", "D"],
-        ["Bravo", "B"],
-        ["D", "D"],
-        ["Option C", "C"],
-        ["Two", "B"],
         ["Alpha", "A"],
+        ["Repeat", "repeat"],
+        ["Charlie", "C"],
+        ["True", "true"],
+        ["Bravo", "B"],
+        ["Next", "next"],
+        ["Delta", "D"],
+        ["I don't know", "skip"],
+        ["Louis Riel", "answer: Louis Riel"],
+        ["Why", "why"],
+        ["False", "false"],
+        ["Pause", "pause"],
+        ["Resume", "resume"],
+        ["Samuel de Champlain", "answer: Samuel de Champlain"],
+        ["What can I say", "help"],
+        ["Option B", "B"],
       ];
       const scheme = (say) =>
-        /^[A-D]$/.test(say)
-          ? "letter"
-          : say.startsWith("Option")
-            ? "option + letter"
-            : /^(One|Two|Three|Four)$/.test(say)
-              ? "number"
-              : "alpha bravo";
+        /^(Alpha|Bravo|Charlie|Delta|Option B)$/.test(say)
+          ? "letters"
+          : prompts.find(([p]) => p === say)[1].startsWith("answer")
+            ? "answers"
+            : "commands";
 
       const commands = [
         [
@@ -294,7 +306,98 @@
         return new Promise((r) => setTimeout(r, 250));
       }
 
+      // The in-page recognizer: Moonshine through Transformers.js, fed straight
+      // from the mic, so the phone never switches into call mode.
+      let asr = null,
+        asrName = null;
+      async function loadAsr(name) {
+        if (asrName === name) return asr;
+        const { pipeline } =
+          await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1");
+        asr = await pipeline("automatic-speech-recognition", `onnx-community/${name}-ONNX`, {
+          dtype: "q8",
+          device: "wasm",
+          progress_callback: (p) => {
+            if (p.status === "progress")
+              $("status").textContent = `Downloading ${name}: ${Math.round(p.progress)}%`;
+          },
+        });
+        asrName = name;
+        $("status").textContent = `${name} ready.`;
+        return asr;
+      }
+      $("engine").onchange = () => {
+        if ($("engine").value !== "browser")
+          loadAsr($("engine").value).catch((e) => ($("status").textContent = e.message));
+      };
+
+      async function listMics() {
+        const mics = (await navigator.mediaDevices.enumerateDevices()).filter(
+          (d) => d.kind === "audioinput" && d.deviceId !== "default",
+        );
+        const chosen = $("mic").value;
+        $("mic").innerHTML = '<option value="">Default</option>';
+        for (const [i, mic] of mics.entries())
+          $("mic").add(new Option(mic.label || `Mic ${i + 1}`, mic.deviceId));
+        $("mic").value = chosen;
+      }
+
+      const QUIET_MS = 700; // this much silence after speech ends the answer
+      async function recordSpeech() {
+        const id = $("mic").value;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: id ? { deviceId: { exact: id } } : true,
+        });
+        listMics();
+        const ctx = new AudioContext({ sampleRate: 16000 });
+        const source = ctx.createMediaStreamSource(stream);
+        const node = ctx.createScriptProcessor(1024, 1, 1);
+        const chunks = [];
+        return new Promise((resolve) => {
+          let floor = 0,
+            spoke = false,
+            quiet = 0,
+            total = 0;
+          node.onaudioprocess = (e) => {
+            const data = new Float32Array(e.inputBuffer.getChannelData(0));
+            chunks.push(data);
+            const rms = Math.sqrt(data.reduce((sum, x) => sum + x * x, 0) / data.length);
+            const ms = (data.length / ctx.sampleRate) * 1000;
+            total += ms;
+            if (total < 300) return void (floor = Math.max(floor, rms));
+            if (rms > Math.max(floor * 3, 0.01)) {
+              spoke = true;
+              quiet = 0;
+            } else if (spoke) quiet += ms;
+            if ((spoke && quiet > QUIET_MS) || total > 6000 || (!spoke && total > 5000)) {
+              node.onaudioprocess = null;
+              node.disconnect();
+              source.disconnect();
+              for (const track of stream.getTracks()) track.stop();
+              ctx.close();
+              const audio = new Float32Array(chunks.reduce((n, c) => n + c.length, 0));
+              chunks.reduce((at, c) => (audio.set(c, at), at + c.length), 0);
+              resolve(spoke ? audio : null);
+            }
+          };
+          source.connect(node);
+          node.connect(ctx.destination);
+        });
+      }
+
+      async function listenInPage(name) {
+        const model = await loadAsr(name);
+        $("status").textContent = "Listening...";
+        const audio = await recordSpeech();
+        if (!audio) return { error: "nothing heard" };
+        const start = performance.now();
+        const { text } = await model(audio);
+        // the wait counts the silence that ended the answer, like the browser's
+        return { heard: [text.trim()], wait: QUIET_MS + Math.round(performance.now() - start) };
+      }
+
       function listen() {
+        if ($("engine").value !== "browser") return listenInPage($("engine").value);
         return new Promise((resolve) => {
           const r = new Recognition();
           r.lang = lang;
@@ -343,7 +446,7 @@
                 .map((h) => `"${h}"`)
                 .join(", ")})</small>`
             : "";
-        li.innerHTML = `${verdict} ${entry.say ? `<b>${entry.say}</b> → ` : ""}${said}${others} <small>· ${entry.wait ?? "?"} ms${entry.local ? " · on-device" : ""}</small>`;
+        li.innerHTML = `${verdict} ${entry.say ? `<b>${entry.say}</b> → ` : ""}${said}${others} <small>· ${entry.wait ?? "?"} ms · ${entry.engine}</small>`;
         $("log").prepend(li);
         const graded = results.filter((r) => r.expected);
         const right = graded.filter((r) => r.command === r.expected).length;
@@ -362,16 +465,21 @@
           `${graded.length ? `${right} of ${graded.length} right (${perScheme})` : ""}${waits.length ? ` · typical wait ${waits[Math.floor(waits.length / 2)]} ms` : ""}`;
       }
 
-      async function attempt(say, expected) {
+      async function attempt(say, expected, playAfter = $("playAfter").checked) {
         $("status").textContent = "Listening...";
         await beep();
         const result = await listen();
         const command = result.heard ? match(result.heard) : null;
-        const entry = { say, expected, ...result, command, local: $("local").checked };
+        const engine =
+          $("engine").value === "browser" && $("local").checked
+            ? "browser, on-device"
+            : $("engine").value;
+        const entry = { say, expected, ...result, command, engine };
         record(entry);
         $("status").innerHTML = result.error
           ? `<span class="bad">${result.error}</span>`
           : `<span class="${!expected || command === expected ? "ok" : "bad"}">Heard "${result.heard[0]}"${command ? ` = ${command}` : ""}</span>`;
+        if (playAfter) await play();
       }
 
       let running = false,
@@ -426,7 +534,7 @@
       async function clipTest(button, wait) {
         if (button) {
           button.disabled = true;
-          await attempt(null, null);
+          await attempt(null, null, false);
           await new Promise((r) => setTimeout(r, wait));
         }
         $("status").textContent = "Playing the clip...";
