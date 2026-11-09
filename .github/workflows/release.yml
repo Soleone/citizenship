@@ -68,5 +68,5 @@ jobs:
           apk="Citizenship-$version-Android.apk"
           cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk "$apk"
           # The version's section of CHANGELOG.md, without its heading.
-          awk -v v="$version" '/^## /{on = index($0, "[" v "]") > 0; next} on' CHANGELOG.md > notes.md
+          awk -v v="$version" '/^## /{on = index($0, "## " v " ") || index($0, "## [" v "]"); next} on' CHANGELOG.md > notes.md
           gh release create "$TAG" "$apk" --verify-tag --title "Citizenship $version" --notes-file notes.md
