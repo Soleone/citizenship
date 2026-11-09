@@ -156,6 +156,8 @@
           <button id="clip">Play clip</button>
           <button id="clipNow">Listen, then play</button>
           <button id="clipLater">Listen, wait 2 s, play</button>
+          <button id="clip4">Listen, wait 4 s, play</button>
+          <button id="clip6">Listen, wait 6 s, play</button>
         </div>
       </section>
 
@@ -430,6 +432,8 @@
       $("clip").onclick = () => clipTest(null, 0);
       $("clipNow").onclick = (e) => clipTest(e.target, 0);
       $("clipLater").onclick = (e) => clipTest(e.target, 2000);
+      $("clip4").onclick = (e) => clipTest(e.target, 4000);
+      $("clip6").onclick = (e) => clipTest(e.target, 6000);
 
       $("copy").onclick = () =>
         navigator.clipboard
