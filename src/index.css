@@ -50,4 +50,10 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+
+  /* Voice navigation moves focus without a keyboard, which the browser wouldn't outline. */
+  [data-voice] main :focus {
+    outline: 3px solid var(--primary);
+    outline-offset: 3px;
+  }
 }

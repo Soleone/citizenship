@@ -75,7 +75,8 @@ export function loadRecognizer(onProgress: (percent: number) => void = () => {})
 const RATE = 16_000;
 const FLOOR_MS = 150; // room noise, measured before the beep while nobody talks yet
 const BEEP_MS = 400; // the chime, so the mic doesn't take it for speech
-const QUIET_MS = 700; // this much silence after speech ends the answer
+const QUIET_MS = 500; // this much silence after speech ends the answer
+const LEAD_CHUNKS = 5; // about 0.3 s kept before speech starts; the silence before it only slows Moonshine
 const WAIT_MS = 8000; // nobody spoke
 const LONGEST_MS = 10_000;
 
@@ -144,6 +145,7 @@ async function record(
         spoke = true;
         quiet = 0;
       } else if (spoke) quiet += ms;
+      else if (chunks.length > LEAD_CHUNKS) chunks.shift();
       if ((spoke && quiet > QUIET_MS) || heard > LONGEST_MS || (!spoke && heard > WAIT_MS))
         finish();
     };
@@ -152,21 +154,50 @@ async function record(
   });
 }
 
-/** Listens once and returns which of `commands` was said, or null. Paused listening goes without tones. */
+let transcribing: Promise<unknown> = Promise.resolve();
+
+/** One at a time: listening over a line can still be transcribing when the next listen starts. */
+async function transcribe(audio: Float32Array) {
+  const model = await loadRecognizer();
+  const run = transcribing.then(() => model(audio));
+  transcribing = run.catch(() => {});
+  const output = await run;
+  return (Array.isArray(output) ? output[0] : output).text;
+}
+
+/**
+ * Listens once: what was heard and which of `commands` it was (null when it was
+ * none of them), or null when nobody spoke. Paused listening goes without tones.
+ */
 export async function hear(
   commands: Command[],
   signal: AbortSignal,
   onPhase: (phase: "listening" | "thinking") => void,
   tones = true,
 ) {
-  const model = await loadRecognizer();
+  await loadRecognizer();
   const audio = await record(signal, () => onPhase("listening"), tones);
   signal.throwIfAborted();
   if (!audio) return null;
   onPhase("thinking");
-  const output = await model(audio);
+  const text = await transcribe(audio);
   signal.throwIfAborted();
-  return match((Array.isArray(output) ? output[0] : output).text, commands);
+  return { text, command: match(text, commands) };
+}
+
+/**
+ * Resolves once someone says pause (or stop, cancel, wait) while `line` plays.
+ * The mic hears the line too, so only exact words count, and not ones the line
+ * itself contains.
+ */
+export async function hearPause(line: string, signal: AbortSignal) {
+  const own = ` ${clean(line)} `;
+  const words = SAYINGS.pause.filter((saying) => !own.includes(` ${saying} `));
+  for (;;) {
+    const heard = await hear(["pause"], signal, () => {}, false);
+    const said = ` ${clean(heard?.text ?? "")} `;
+    if (words.some((saying) => said.includes(` ${saying} `))) return;
+  }
 }
 
 const clean = (text: string) =>

@@ -173,6 +173,9 @@ function VoiceListening() {
           {voice.kind === "paused" ? "Say resume" : commands.map(saying).join(" · ")}
         </span>
       )}
+      {voice.kind === "listening" && voice.missed && (
+        <span className="text-sm opacity-80">Didn't catch "{voice.missed}"</span>
+      )}
     </div>
   );
 }

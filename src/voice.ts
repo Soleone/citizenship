@@ -10,14 +10,15 @@
 import { useEffect, useEffectEvent, useSyncExternalStore } from "react";
 import { phrases } from "./audio.ts";
 import { unlockSound } from "./juice.ts";
-import { hear, loadRecognizer, type Command } from "./listen.ts";
+import { hear, hearPause, loadRecognizer, type Command } from "./listen.ts";
 import { say } from "./speak.ts";
 
 export type VoiceStatus =
   | { kind: "off" }
   | { kind: "loading"; percent: number }
   | { kind: "idle" | "speaking" | "thinking" | "paused" }
-  | { kind: "listening"; commands: Command[] };
+  /** `missed` is what was heard last time, when it was none of the commands. */
+  | { kind: "listening"; commands: Command[]; missed?: string };
 
 let status: VoiceStatus = { kind: "off" };
 const listeners = new Set<() => void>();
@@ -49,6 +50,7 @@ export async function toggleVoice() {
   if (status.kind !== "off") {
     paused?.abort();
     setStatus({ kind: "off" });
+    document.documentElement.removeAttribute("data-voice");
     void wakeLock?.release();
     wakeLock = null;
     navigator.mediaSession.setActionHandler("pause", null);
@@ -64,6 +66,7 @@ export async function toggleVoice() {
     throw error;
   }
   setStatus({ kind: "idle" });
+  document.documentElement.setAttribute("data-voice", ""); // outlines what voice navigation focuses
   void keepAwake();
   // The headset or steering wheel button: the only way to stop a long paragraph mid-sentence,
   // since the page can't listen while it talks.
@@ -80,7 +83,7 @@ function pauseVoice() {
   const { signal } = controller;
   void (async () => {
     await say(phrases.paused, signal);
-    while ((await hear(["resume"], signal, () => {}, false)) !== "resume");
+    while ((await hear(["resume"], signal, () => {}, false))?.command !== "resume");
     resumeVoice();
   })().catch((error: unknown) => signal.aborted || console.error(error));
 }
@@ -91,6 +94,9 @@ function resumeVoice() {
   paused?.abort();
   setStatus({ kind: "idle" });
 }
+
+/** Shorter lines aren't worth opening the mic for while they play. */
+const LONG_LINE = 80;
 
 export type Voice = {
   say: (text: string) => Promise<void>;
@@ -115,14 +121,33 @@ export function useVoiceTurn(step: string | null, turn: (voice: Voice) => Promis
     const controller = new AbortController();
     const { signal } = controller;
     const voice: Voice = {
-      say: (text) => (setStatus({ kind: "speaking" }), say(text, signal)),
-      hear: async (commands) => {
-        setStatus({ kind: "idle" }); // the mic takes a moment to open
-        const heard = await hear([...commands, "pause", "back"], signal, (kind) =>
-          setStatus(kind === "listening" ? { kind, commands } : { kind }),
+      say: async (text) => {
+        setStatus({ kind: "speaking" });
+        if (text.length < LONG_LINE) return say(text, signal);
+        // Listening over the line, so "stop" works mid-sentence. Echo cancellation keeps
+        // the line itself mostly out of the mic.
+        const spoken = new AbortController();
+        const over = AbortSignal.any([signal, spoken.signal]);
+        void hearPause(text, over).then(
+          () => (pauseVoice(), controller.abort()),
+          (error: unknown) => over.aborted || console.error(error),
         );
-        if (heard !== "pause" && heard !== "back") return heard;
-        if (heard === "pause") pauseVoice();
+        await say(text, signal).finally(() => spoken.abort());
+      },
+      hear: async (commands) => {
+        let missed: string | undefined;
+        let heard;
+        // Only silence counts as no answer; something misheard listens again.
+        do {
+          setStatus({ kind: "idle" }); // the mic takes a moment to open
+          heard = await hear([...commands, "pause", "back"], signal, (kind) =>
+            setStatus(kind === "listening" ? { kind, commands, missed } : { kind }),
+          );
+          missed = heard?.text.trim();
+        } while (missed && !heard?.command);
+        const command = heard?.command ?? null;
+        if (command !== "pause" && command !== "back") return command;
+        if (command === "pause") pauseVoice();
         else history.back(); // the screen it lands on starts its own turn
         controller.abort();
         throw signal.reason;
