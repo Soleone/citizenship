@@ -90,7 +90,10 @@ export function SessionScreen({
 
   // Silence after a reading or an answer goes on by itself; a question waits for an answer.
   useVoiceTurn(`${step}:${picked}:${replays}`, async (voice) => {
-    const again = () => setReplays((n) => n + 1);
+    const again = async () => {
+      await voice.say(phrases.repeating);
+      setReplays((n) => n + 1);
+    };
     if (!question) {
       if (biteIndex === 0 && replays === 0) await voice.say(introLine(session));
       await voice.say(biteLine(bite));
@@ -105,8 +108,10 @@ export function SessionScreen({
     await voice.say(questionLine(question));
     for (let tries = 0; tries < LISTEN_TRIES; tries++) {
       const command = await voice.hear([...answerCommands(question), "repeat"]);
-      if (command === "repeat") await voice.say(questionLine(question));
-      else if (command) return pick(ANSWERS[command] ?? 0);
+      if (command === "repeat") {
+        await voice.say(phrases.repeating);
+        await voice.say(questionLine(question));
+      } else if (command) return pick(ANSWERS[command] ?? 0);
       else
         await voice.say(question.kind === "truefalse" ? phrases.sayTrueFalse : phrases.sayLetter);
     }
@@ -224,7 +229,10 @@ export function SessionDone({
     await voice.say(phrases.done);
     const command = await voice.hear(["next", "repeat"]);
     if (command === "next") onNext();
-    if (command === "repeat") setReplays((n) => n + 1);
+    if (command === "repeat") {
+      await voice.say(phrases.repeating);
+      setReplays((n) => n + 1);
+    }
   });
 
   return (

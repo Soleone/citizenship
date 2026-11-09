@@ -20,6 +20,7 @@ const letters = ["Alpha", "Bravo", "Charlie", "Delta"];
 export const phrases = {
   correct: ["Correct.", "That's right.", "Exactly.", "Yes, well done.", "Spot on."],
   wrong: ["Not quite.", "Not this time.", "That's not it.", "No, not that one."],
+  repeating: "Repeating.",
   sayLetter: "Say Alpha, Bravo, Charlie or Delta.",
   sayTrueFalse: "Say true or false.",
   done: "Session complete. Say next for the next session.",
