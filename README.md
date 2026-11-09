@@ -63,6 +63,10 @@ pnpm dlx wrangler@4 secret put HOUSEHOLD_KEY -c worker/wrangler.jsonc
 
 Every push to `main` deploys the app to https://citizenship.soleone.xyz through Vercel's Git integration. The Worker's address is `SYNC_URL` in `src/sync.ts`; the key is in `$DATA/secrets/citizenship/`. Join a device by opening `<app>/#join=<household key>` once; Settings copies that link for the next device.
 
+## Audio
+
+`pnpm audio:generate` speaks every session (bites, takeaways, questions and answers) with the local Phonon 31M voice Miles, in study order, into `$DATA/apps/citizenship/audio/phonon-miles/`. Each clip is named by a hash of its text, so an edited line gets a new clip. Ctrl-C stops it cleanly and a rerun continues where it stopped. `pnpm audio:generate:breeze` does the same with Breeze TTS 2's designed voice radio-man into `breeze-radio-man/`: better sound, about 28 h. Each needs its env from the tts-scout skill (`$DATA/apps/tts-scout/envs/<model>`) and ffmpeg.
+
 ## Where the content comes from
 
 `data/corpus/` holds plain-text captures of every chapter of _Discover Canada_ plus the IRCC test and application pages. Every study bite and every question carries an `evidence` string that must appear verbatim in those files:

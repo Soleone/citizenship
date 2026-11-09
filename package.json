@@ -16,7 +16,9 @@
     "verify": "vp check && pnpm curriculum:check && pnpm curriculum:logic && pnpm eligibility:check && pnpm routes:check && pnpm sync:check && pnpm build",
     "curriculum:fetch": "python3 scripts/fetch-corpus.py",
     "preview": "vp preview",
-    "media:capture": "node scripts/capture-media.mjs"
+    "media:capture": "node scripts/capture-media.mjs",
+    "audio:generate": "jiti scripts/generate-audio.mts",
+    "audio:generate:breeze": "jiti scripts/generate-audio.mts breeze"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
