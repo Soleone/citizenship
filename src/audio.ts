@@ -16,10 +16,10 @@ export type SpokenLine = { id: string; text: string };
 // recognised on the phones, Alpha to Delta were (voice lab, 2026-11-09).
 const letters = ["Alpha", "Bravo", "Charlie", "Delta"];
 
-/** What voice mode says between the curriculum lines. */
+/** What voice mode says between the curriculum lines. Feedback has a few wordings, picked at random, so it doesn't drone. */
 export const phrases = {
-  correct: "Correct.",
-  wrong: "Not quite.",
+  correct: ["Correct.", "That's right.", "Exactly.", "Yes, well done.", "Spot on."],
+  wrong: ["Not quite.", "Not this time.", "That's not it.", "No, not that one."],
   sayLetter: "Say Alpha, Bravo, Charlie or Delta.",
   sayTrueFalse: "Say true or false.",
   done: "Session complete. Say next for the next session.",
@@ -58,6 +58,8 @@ export async function clipId(text: string): Promise<string> {
 
 /** Every line the app speaks, once each, in study order. */
 export async function curriculumLines(): Promise<SpokenLine[]> {
-  const texts = [...new Set([...Object.values(phrases), ...allSessions.flatMap(sessionTexts)])];
+  const texts = [
+    ...new Set([...Object.values(phrases).flat(), ...allSessions.flatMap(sessionTexts)]),
+  ];
   return Promise.all(texts.map(async (text) => ({ id: await clipId(text), text })));
 }

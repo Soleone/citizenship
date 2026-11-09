@@ -32,6 +32,7 @@ const answerCommands = (question: TestQuestion): Command[] =>
     ? ["true", "false", "A", "B"]
     : (["A", "B", "C", "D"] as const).slice(0, question.options.length);
 const LISTEN_TRIES = 3;
+const anyOf = (lines: string[]) => lines[Math.floor(Math.random() * lines.length)];
 
 export function SessionScreen({
   session,
@@ -97,7 +98,7 @@ export function SessionScreen({
       return (await voice.hear(["next", "repeat"])) === "repeat" ? again() : next();
     }
     if (picked !== null) {
-      await voice.say(picked === question.correctIndex ? phrases.correct : phrases.wrong);
+      await voice.say(anyOf(picked === question.correctIndex ? phrases.correct : phrases.wrong));
       await voice.say(answerLine(question));
       return (await voice.hear(["next", "repeat"])) === "repeat" ? again() : next();
     }
