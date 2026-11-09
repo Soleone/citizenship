@@ -7,7 +7,8 @@
  * laptop and a phone, to prove the promises the app makes: the first device
  * seeds the household, a new device takes the shared copy instead of wiping it,
  * edits travel both ways, the newer save wins a conflict, application dates
- * never leave the device, and every write keeps the version it replaced.
+ * never leave the device, and every write keeps the version it replaced. Also that
+ * spoken clips play without the key but upload only with it.
  */
 
 import worker, { Household, type Env } from "../worker/index.ts";
@@ -47,7 +48,14 @@ const household = new Household({
     delete: async (key) => saved.delete(key),
   },
 });
+// The clip bucket, as a plain map of bytes.
+const clips = new Map<string, ArrayBuffer>();
 const env: Env = {
+  AUDIO: {
+    get: async (name) => (clips.has(name) ? { body: new Response(clips.get(name)).body! } : null),
+    head: async (name) => (clips.has(name) ? { size: clips.get(name)!.byteLength } : null),
+    put: async (name, body) => void clips.set(name, await new Response(body).arrayBuffer()),
+  },
   HOUSEHOLD_KEY: KEY,
   HOUSEHOLD: { idFromName: (name) => name, get: () => ({ fetch: (r) => household.fetch(r) }) },
 };
@@ -146,6 +154,15 @@ await stranger.sync();
 expect("a wrong key is refused", stranger.self.status?.kind === "wrong-key");
 
 for (const each of [laptop, phone, stranger]) each.stop();
+
+const clipUrl = `${URL_BASE}/audio/phonon-miles/0123456789abcdef.mp3`;
+const put = (key: string) =>
+  fetch(clipUrl, { method: "PUT", headers: { authorization: `Bearer ${key}` }, body: "mp3" });
+expect("a clip upload needs the key", (await put("a guessed key")).status === 403);
+expect("a missing clip is a 404", (await fetch(clipUrl, { method: "HEAD" })).status === 404);
+await put(KEY);
+const played = await fetch(clipUrl);
+expect("anyone can play an uploaded clip", played.ok && (await played.text()) === "mp3");
 
 if (failures.length) {
   console.error(`\n${failures.length} failed:\n${failures.map((f) => `  - ${f}`).join("\n")}`);

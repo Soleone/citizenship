@@ -1,4 +1,9 @@
-import type { Session, StudyBite, TestQuestion } from "./curriculum/index.ts";
+import {
+  allSessions,
+  type Session,
+  type StudyBite,
+  type TestQuestion,
+} from "./curriculum/index.ts";
 
 /**
  * What the app says out loud, one clip per line. A clip is named by the hash of
@@ -26,7 +31,7 @@ function answerLine(question: TestQuestion) {
   return `The answer is ${answer}. ${question.rationale}`;
 }
 
-export function sessionTexts(session: Session): string[] {
+function sessionTexts(session: Session): string[] {
   return [
     `${session.title}. ${session.summary}`,
     ...session.bites.flatMap((bite) => [biteLine(bite), takeawayLine(bite)]),
@@ -34,9 +39,15 @@ export function sessionTexts(session: Session): string[] {
   ];
 }
 
-export async function clipId(text: string): Promise<string> {
+async function clipId(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text));
   return [...new Uint8Array(digest).slice(0, 8)]
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+/** Every line the app speaks, once each, in study order. */
+export async function curriculumLines(): Promise<SpokenLine[]> {
+  const texts = [...new Set(allSessions.flatMap(sessionTexts))];
+  return Promise.all(texts.map(async (text) => ({ id: await clipId(text), text })));
 }

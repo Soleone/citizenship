@@ -18,7 +18,8 @@
     "preview": "vp preview",
     "media:capture": "node scripts/capture-media.mjs",
     "audio:generate": "jiti scripts/generate-audio.mts",
-    "audio:generate:breeze": "jiti scripts/generate-audio.mts breeze"
+    "audio:generate:breeze": "jiti scripts/generate-audio.mts breeze",
+    "audio:upload": "jiti scripts/upload-audio.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -13,8 +13,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { clipId, sessionTexts, type SpokenLine } from "../src/audio.ts";
-import { allSessions } from "../src/curriculum/index.ts";
+import { curriculumLines } from "../src/audio.ts";
 
 const data = process.env.DATA;
 if (!data)
@@ -38,10 +37,7 @@ const voice = voices[name as keyof typeof voices];
 const out = join(data, "apps/citizenship/audio", voice.folder);
 const python = join(tts, "envs", voice.env, "bin/python");
 
-const texts = [...new Set(allSessions.flatMap(sessionTexts))];
-const lines: SpokenLine[] = await Promise.all(
-  texts.map(async (text) => ({ id: await clipId(text), text })),
-);
+const lines = await curriculumLines();
 
 mkdirSync(out, { recursive: true });
 const jobs = join(out, "lines.json");

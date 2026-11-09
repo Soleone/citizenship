@@ -1,5 +1,6 @@
 /**
  * Household sync: the one saved study state for A and B, behind one secret key.
+ * Also serves the spoken clips from R2 (see `clip`).
  *
  * A Durable Object holds it because it answers every request in order, so the
  * revision check below cannot race the way an eventually consistent store would.
@@ -16,7 +17,12 @@ type Namespace = {
   idFromName(name: string): unknown;
   get(id: unknown): { fetch(request: Request): Promise<Response> };
 };
-export type Env = { HOUSEHOLD: Namespace; HOUSEHOLD_KEY: string };
+type Bucket = {
+  get(key: string): Promise<{ body: ReadableStream } | null>;
+  head(key: string): Promise<{ size: number } | null>;
+  put(key: string, body: ReadableStream | null): Promise<unknown>;
+};
+export type Env = { HOUSEHOLD: Namespace; HOUSEHOLD_KEY: string; AUDIO: Bucket };
 
 type SyncRecord = { rev: number; savedAt: number; state: unknown };
 type SyncPush = { baseRev: number; savedAt: number; state: unknown };
@@ -26,7 +32,7 @@ const KEPT_VERSIONS = 30;
 
 const cors = {
   "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET, PUT, OPTIONS",
+  "access-control-allow-methods": "GET, HEAD, PUT, OPTIONS",
   "access-control-allow-headers": "authorization, content-type",
 };
 
@@ -37,12 +43,39 @@ function json(body: unknown, status = 200) {
   });
 }
 
+const CLIP_PATH = /^\/audio\/[a-z-]+\/[0-9a-f]{16}\.mp3$/;
+
+/**
+ * Clips are public to read, so an <audio> tag can play them, and only the household
+ * key can upload. A clip is named by the hash of its text, so it never changes.
+ */
+async function clip(request: Request, env: Env, path: string, authorized: boolean) {
+  const name = path.slice(1);
+  if (request.method === "PUT") {
+    if (!authorized) return json({ error: "wrong key" }, 403);
+    await env.AUDIO.put(name, request.body);
+    return json({ saved: name });
+  }
+  const found = request.method === "HEAD" ? await env.AUDIO.head(name) : await env.AUDIO.get(name);
+  if (!found) return json({ error: "no clip" }, 404);
+  return new Response("body" in found ? found.body : null, {
+    headers: {
+      "content-type": "audio/mpeg",
+      "cache-control": "public, max-age=31536000, immutable",
+      ...cors,
+    },
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-    if (new URL(request.url).pathname !== "/state") return json({ error: "not found" }, 404);
+    const path = new URL(request.url).pathname;
     const key = request.headers.get("authorization")?.replace(/^Bearer /, "");
-    if (!env.HOUSEHOLD_KEY || key !== env.HOUSEHOLD_KEY) return json({ error: "wrong key" }, 403);
+    const authorized = Boolean(env.HOUSEHOLD_KEY) && key === env.HOUSEHOLD_KEY;
+    if (CLIP_PATH.test(path)) return clip(request, env, path, authorized);
+    if (path !== "/state") return json({ error: "not found" }, 404);
+    if (!authorized) return json({ error: "wrong key" }, 403);
     return env.HOUSEHOLD.get(env.HOUSEHOLD.idFromName("household")).fetch(request);
   },
 };
