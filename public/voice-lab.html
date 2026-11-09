@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Voice lab</title>
+    <!-- Throwaway spike for hands-free study (see the hands-free plan): can Chrome on
+     this phone recognise the quiz commands, on-device or not, and how fast. -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fafaf9;
+        --fg: #1c1917;
+        --muted: #78716c;
+        --line: #e7e5e4;
+        --ok: #15803d;
+        --bad: #b91c1c;
+        --accent: #b91c1c;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1917;
+          --fg: #f5f5f4;
+          --muted: #a8a29e;
+          --line: #44403c;
+          --ok: #4ade80;
+          --bad: #f87171;
+          --accent: #f87171;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          16px/1.45 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 34rem;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      h1 {
+        font-size: 1.3rem;
+        margin: 0 0 4px;
+      }
+      p {
+        margin: 4px 0;
+        color: var(--muted);
+      }
+      section {
+        border-top: 1px solid var(--line);
+        padding: 12px 0;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      button {
+        font: inherit;
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--fg);
+        cursor: pointer;
+      }
+      button.main {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      label {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 0;
+      }
+      #status {
+        font-size: 1.6rem;
+        font-weight: 600;
+        min-height: 2.2rem;
+      }
+      #heard {
+        font-size: 1.1rem;
+        min-height: 1.6rem;
+      }
+      .ok {
+        color: var(--ok);
+      }
+      .bad {
+        color: var(--bad);
+      }
+      ol {
+        padding-left: 20px;
+        margin: 0;
+        font-size: 0.9rem;
+      }
+      li {
+        padding: 4px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      code {
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Voice lab</h1>
+      <p>
+        Say a command after the beep: A, B, C, D, true, false, repeat, next, pause, why, I don't
+        know, or an answer like "Louis Riel".
+      </p>
+
+      <section>
+        <div id="support"></div>
+        <label
+          ><input type="checkbox" id="local" /> On the phone only
+          (<code>processLocally</code>)</label
+        >
+        <div class="row"><button id="install" hidden>Download the speech model</button></div>
+      </section>
+
+      <section>
+        <div class="row">
+          <button class="main" id="once">Listen once</button>
+          <button id="loop">Hands-free loop</button>
+        </div>
+        <label><input type="checkbox" id="echo" checked /> Say what it heard (for the car)</label>
+        <div id="status">Ready</div>
+        <div id="heard"></div>
+      </section>
+
+      <section>
+        <div class="row">
+          <strong>Results</strong> <span id="score"></span> <button id="copy">Copy</button>
+        </div>
+        <ol id="log" reversed></ol>
+      </section>
+    </main>
+    <script>
+      const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const $ = (id) => document.getElementById(id);
+      const lang = "en-CA";
+      const options = ["Louis Riel", "John A. Macdonald", "Samuel de Champlain", "Laura Secord"];
+      const results = [];
+
+      // What a heard phrase means, in the order the app would check it.
+      const commands = [
+        ["A", /^(a|ay|eh|hey|option a|letter a)$/],
+        ["B", /^(b|be|bee|option b|letter b)$/],
+        ["C", /^(c|see|sea|si|option c|letter c)$/],
+        ["D", /^(d|dee|the|option d|letter d)$/],
+        ["true", /^(true|that's true|it's true)$/],
+        ["false", /^(false|that's false|it's false)$/],
+        ["repeat", /^(repeat|again|say (it|that) again|what)$/],
+        ["next", /^(next|continue|go on|okay|ok)$/],
+        ["pause", /^(pause|stop|wait)$/],
+        ["resume", /^(resume|go|start)$/],
+        ["why", /^(why|explain|how come)$/],
+        ["skip", /^(i don't know|don't know|no idea|skip|pass)$/],
+        ["help", /^(what can i say|help)$/],
+      ];
+      const clean = (s) =>
+        s
+          .toLowerCase()
+          .replace(/[.,!?]/g, "")
+          .trim();
+      function match(alternatives) {
+        for (const alt of alternatives) {
+          const said = clean(alt);
+          for (const [name, pattern] of commands) if (pattern.test(said)) return name;
+          const option = options.find((o) =>
+            clean(o)
+              .split(" ")
+              .some((w) => w.length > 3 && said.includes(w)),
+          );
+          if (option) return `answer: ${option}`;
+        }
+        return null;
+      }
+
+      async function checkSupport() {
+        if (!Recognition) {
+          $("support").innerHTML =
+            '<span class="bad">No speech recognition in this browser.</span>';
+          return;
+        }
+        const parts = [`Recognition: <span class="ok">yes</span>`];
+        if (Recognition.available) {
+          const state = await Recognition.available({ langs: [lang], processLocally: true });
+          parts.push(`On-device for ${lang}: <strong>${state}</strong>`);
+          $("install").hidden = state !== "downloadable";
+          $("local").checked = state === "available";
+        } else {
+          parts.push('On-device check: <span class="bad">not offered by this Chrome</span>');
+          $("local").disabled = true;
+        }
+        $("support").innerHTML = parts.join("<br>");
+      }
+
+      $("install").onclick = async () => {
+        $("install").disabled = true;
+        $("install").textContent = "Downloading...";
+        const ok = await Recognition.install({ langs: [lang], processLocally: true });
+        $("install").textContent = ok ? "Downloaded" : "Download failed";
+        checkSupport();
+      };
+
+      let audio;
+      function beep() {
+        audio ??= new AudioContext();
+        const osc = audio.createOscillator(),
+          gain = audio.createGain();
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.2, audio.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.15);
+        osc.connect(gain).connect(audio.destination);
+        osc.start();
+        osc.stop(audio.currentTime + 0.15);
+        return new Promise((r) => setTimeout(r, 200));
+      }
+      function say(text) {
+        if (!$("echo").checked) return Promise.resolve();
+        return new Promise((resolve) => {
+          const u = new SpeechSynthesisUtterance(text);
+          u.lang = lang;
+          u.onend = u.onerror = resolve;
+          speechSynthesis.speak(u);
+        });
+      }
+
+      function listen() {
+        return new Promise((resolve) => {
+          const r = new Recognition();
+          r.lang = lang;
+          r.maxAlternatives = 5;
+          r.interimResults = false;
+          r.continuous = false;
+          if ($("local").checked) r.processLocally = true;
+          const started = performance.now();
+          let speechEnd = null,
+            done = false;
+          const finish = (value) => {
+            if (!done) {
+              done = true;
+              resolve(value);
+            }
+          };
+          r.onspeechend = () => {
+            speechEnd = performance.now();
+          };
+          r.onresult = (e) => {
+            const alts = [...e.results[0]].map((a) => ({
+              text: a.transcript,
+              confidence: a.confidence,
+            }));
+            finish({
+              alts,
+              wait: speechEnd ? Math.round(performance.now() - speechEnd) : null,
+              total: Math.round(performance.now() - started),
+            });
+          };
+          r.onerror = (e) => finish({ error: e.error });
+          r.onend = () => finish({ error: "nothing heard" });
+          r.start();
+        });
+      }
+
+      async function turn() {
+        $("status").textContent = "Listening...";
+        $("heard").textContent = "";
+        await beep();
+        const result = await listen();
+        const command = result.alts ? match(result.alts.map((a) => a.text)) : null;
+        const entry = {
+          ...result,
+          command,
+          local: $("local").checked,
+          at: new Date().toLocaleTimeString(),
+        };
+        results.unshift(entry);
+        render(entry);
+        if (result.error) {
+          $("status").innerHTML = `<span class="bad">${result.error}</span>`;
+          await say("Didn't catch that.");
+        } else if (command) {
+          $("status").innerHTML = `<span class="ok">${command}</span>`;
+          await say(`Heard ${command.replace("answer: ", "")}.`);
+        } else {
+          $("status").innerHTML = '<span class="bad">no match</span>';
+          await say(`Heard ${result.alts[0].text}. No match.`);
+        }
+        return entry;
+      }
+
+      function render(entry) {
+        if (entry.alts)
+          $("heard").textContent = entry.alts
+            .map((a) => `"${a.text}" ${a.confidence ? a.confidence.toFixed(2) : ""}`)
+            .join("  ·  ");
+        const li = document.createElement("li");
+        li.innerHTML = entry.error
+          ? `<span class="bad">${entry.error}</span> <small>${entry.at}${entry.local ? " · on-device" : ""}</small>`
+          : `<strong class="${entry.command ? "ok" : "bad"}">${entry.command ?? "no match"}</strong> from "${entry.alts[0].text}" <small>· ${entry.wait ?? "?"} ms after you stopped · ${entry.at}${entry.local ? " · on-device" : ""}</small>`;
+        $("log").prepend(li);
+        const heard = results.filter((r) => r.command).length;
+        $("score").textContent = `${heard} of ${results.length} understood`;
+      }
+
+      $("once").onclick = async () => {
+        $("once").disabled = true;
+        await turn();
+        $("once").disabled = false;
+      };
+
+      // Keeps listening until "pause" or three silent turns in a row, like the real loop would.
+      let looping = false,
+        wakeLock = null;
+      function setLooping(on) {
+        looping = on;
+        $("loop").textContent = on ? "Stop loop" : "Hands-free loop";
+        $("once").disabled = on;
+        if (!on) {
+          wakeLock?.release();
+          wakeLock = null;
+        }
+      }
+      $("loop").onclick = async () => {
+        if (looping) return setLooping(false);
+        setLooping(true);
+        try {
+          wakeLock = await navigator.wakeLock?.request("screen");
+        } catch {}
+        let misses = 0;
+        while (looping) {
+          const entry = await turn();
+          misses = entry.error ? misses + 1 : 0;
+          if (entry.command === "pause" || misses >= 3) {
+            setLooping(false);
+            await say("Paused.");
+          }
+          await new Promise((r) => setTimeout(r, 400));
+        }
+      };
+
+      $("copy").onclick = () =>
+        navigator.clipboard
+          .writeText(JSON.stringify({ ua: navigator.userAgent, results }, null, 1))
+          .then(() => {
+            $("copy").textContent = "Copied";
+          });
+
+      checkSupport();
+    </script>
+  </body>
+</html>
