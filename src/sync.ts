@@ -55,6 +55,16 @@ function householdKey(): string | null {
   return window.localStorage.getItem(KEY_STORAGE_KEY);
 }
 
+/** Joins with a pasted household link, through the same reload opening it would do; false when it isn't one. */
+export function joinHousehold(link: string): boolean {
+  const at = link.indexOf(JOIN_HASH);
+  const hash = link.slice(at).trim();
+  if (at < 0 || hash === JOIN_HASH) return false;
+  window.location.hash = hash;
+  window.location.reload();
+  return true;
+}
+
 /** The link that adds another phone or laptop to this household. */
 export function householdLink(): string | null {
   const key = window.localStorage.getItem(KEY_STORAGE_KEY);

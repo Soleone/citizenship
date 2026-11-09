@@ -57,7 +57,7 @@ import {
   type RelayState,
   type View,
 } from "@/state";
-import { householdLink, type SyncStatus } from "@/sync";
+import { householdLink, joinHousehold, type SyncStatus } from "@/sync";
 import { saying } from "@/listen";
 import { toggleVoice, useVoice } from "@/voice";
 import { navItems } from "./nav";
@@ -335,7 +335,11 @@ export function SettingsDialog({
               <FieldLabel htmlFor="coach-mode">Listener hints in Together</FieldLabel>
             </FieldContent>
           </Field>
-          {syncStatus.kind !== "local" && <AddDevice />}
+          {syncStatus.kind === "local" || syncStatus.kind === "wrong-key" ? (
+            <JoinHousehold />
+          ) : (
+            <AddDevice />
+          )}
           <Backup relayState={relayState} onRestore={onRestore} />
         </FieldGroup>
       </DialogContent>
@@ -346,7 +350,7 @@ export function SettingsDialog({
 function syncLine(status: SyncStatus) {
   switch (status.kind) {
     case "local":
-      return "Saved in this browser only. Open your household link to share progress across devices.";
+      return "Saved on this device only. Open or paste your household link to share progress across devices.";
     case "syncing":
       return "Syncing with your household…";
     case "synced":
@@ -354,8 +358,31 @@ function syncLine(status: SyncStatus) {
     case "offline":
       return "Offline. Progress is saved here and syncs when the connection is back.";
     case "wrong-key":
-      return "The household link on this device was refused. Open the link again.";
+      return "The household link on this device was refused. Open or paste the link again.";
   }
+}
+
+/** The Android app can't open the household link, so it takes it pasted. */
+function JoinHousehold() {
+  const [link, setLink] = useState("");
+  const [refused, setRefused] = useState(false);
+  return (
+    <Field>
+      <FieldLabel htmlFor="household-link">Household link</FieldLabel>
+      <div className="flex gap-2">
+        <Input
+          id="household-link"
+          value={link}
+          placeholder="Paste the link from another device"
+          onChange={(event) => setLink(event.target.value)}
+        />
+        <Button variant="outline" onClick={() => setRefused(!joinHousehold(link))}>
+          Join
+        </Button>
+      </div>
+      {refused && <FieldDescription>That is not a household link.</FieldDescription>}
+    </Field>
+  );
 }
 
 function AddDevice() {

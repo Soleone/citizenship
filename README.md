@@ -61,13 +61,19 @@ pnpm sync:deploy                                                # deploy the Wor
 pnpm dlx wrangler@4 secret put HOUSEHOLD_KEY -c worker/wrangler.jsonc
 ```
 
-Every push to `main` deploys the app to https://citizenship.soleone.xyz through Vercel's Git integration. The Worker's address is `SYNC_URL` in `src/sync.ts`; the key is in `$DATA/secrets/citizenship/`. Join a device by opening `<app>/#join=<household key>` once; Settings copies that link for the next device.
+Every push to `main` deploys the app to https://citizenship.soleone.xyz through Vercel's Git integration. The Worker's address is `SYNC_URL` in `src/sync.ts`; the key is in `$DATA/secrets/citizenship/`. Join a device by opening `<app>/#join=<household key>` once, or pasting it under Settings; Settings copies that link for the next device.
 
 ## Audio
 
 `pnpm audio:generate` speaks every session (bites, takeaways, questions and answers) with the local Phonon 31M voice Miles, in study order, into `$DATA/apps/citizenship/audio/phonon-miles/`. Each clip is named by a hash of its text, so an edited line gets a new clip. Ctrl-C stops it cleanly and a rerun continues where it stopped. `pnpm audio:generate:breeze` does the same with Breeze TTS 2's designed voice radio-man into `breeze-radio-man/`: better sound, about 28 h. Each needs its env from the tts-scout skill (`$DATA/apps/tts-scout/envs/<model>`) and ffmpeg.
 
 **Voice mode** (the headphones button in a study session) reads each bite and quick check aloud and listens for an answer: Alpha, Bravo, Charlie or Delta (true or false on true/false questions), "repeat" and "next"; silence after a reading moves on. Speech is recognised in the page by Moonshine base (a one-time 63 MB download), not the browser's own recognizer, which switches Android into call mode and garbles playback for seconds afterwards. The screen stays awake while it is on.
+
+## Android app
+
+`src-tauri/` is a Tauri shell that opens https://citizenship.soleone.xyz, so a push to `main` updates it too. Its one native part is the mic (`MicPlugin.kt`): a web page that opens the mic puts Android in call mode, which garbles playback and switches Bluetooth to its phone-call sound. The native mic records from the phone's own mic without that, so in the app a long line listens for "pause" or "stop" while it plays. On the web, the mic only opens between lines.
+
+`pnpm build:android` builds the signed APK (about 11 MB), with the key from `$DATA/secrets/citizenship`. Rebuild it only when something in `src-tauri/` changes. The app keeps its own storage, so paste the household link under Settings once.
 
 `pnpm audio:upload` (or `pnpm audio:upload breeze`) copies the finished clips to the R2 bucket `citizenship-audio` behind the sync Worker, sending only the ones it doesn't have. Anyone can play a clip at `<SYNC_URL>/audio/<voice>/<clip id>.mp3`; uploading needs the household key.
 

@@ -4,10 +4,12 @@
  *
  * Not the browser's SpeechRecognition: it hands the mic to the system recognizer,
  * which puts Android in call mode and garbles the next few seconds of playback.
- * Recording the mic ourselves leaves playback clean (voice lab, 2026-11-09).
+ * Recording the mic ourselves only does that while it is open, and the Android
+ * app's native mic not at all.
  */
 
 import type { AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
+import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { cue } from "./juice.ts";
 
 export type Command =
@@ -80,6 +82,47 @@ const LEAD_CHUNKS = 5; // about 0.3 s kept before speech starts; the silence bef
 const WAIT_MS = 8000; // nobody spoke
 const LONGEST_MS = 10_000;
 
+type Mic = (onChunk: (samples: Float32Array) => void) => Promise<() => void>;
+
+/**
+ * The page's own mic. Android puts the phone in call mode while it is open, which
+ * garbles playback, so it only opens between lines.
+ */
+const pageMic: Mic = async (onChunk) => {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const context = new AudioContext({ sampleRate: RATE });
+  const source = context.createMediaStreamSource(stream);
+  // Deprecated, but it still works everywhere and spares a separate AudioWorklet module.
+  const node = context.createScriptProcessor(1024, 1, 1);
+  node.onaudioprocess = (event) => onChunk(new Float32Array(event.inputBuffer.getChannelData(0)));
+  source.connect(node);
+  node.connect(context.destination);
+  return () => {
+    node.onaudioprocess = null;
+    node.disconnect();
+    source.disconnect();
+    for (const track of stream.getTracks()) track.stop();
+    void context.close();
+  };
+};
+
+/** The Android app's mic (src-tauri): no call mode, so it can listen while a line plays. */
+const appMic: Mic = async (onChunk) => {
+  const chunks = new Channel<string>((base64) => {
+    const pcm = new Int16Array(Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)).buffer);
+    onChunk(Float32Array.from(pcm, (sample) => sample / 32768));
+  });
+  await invoke("mic_start", { chunks });
+  return () => {
+    chunks.onmessage = () => {};
+    void invoke("mic_stop", { chunks });
+  };
+};
+
+/** Whether the mic can stay open while lines play without spoiling them. */
+export const listensWhileSpeaking = isTauri();
+const openMic = listensWhileSpeaking ? appMic : pageMic;
+
 /**
  * One answer from the mic, or null when nobody spoke. The mic sends silence for
  * a moment after it opens, so the beep waits for real sound; `onOpen` fires with
@@ -90,68 +133,53 @@ async function record(
   onOpen: () => void,
   tones: boolean,
 ): Promise<Float32Array | null> {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const context = new AudioContext({ sampleRate: RATE });
-  const source = context.createMediaStreamSource(stream);
-  // Deprecated, but it still works everywhere and spares a separate AudioWorklet module.
-  const node = context.createScriptProcessor(1024, 1, 1);
   const chunks: Float32Array[] = [];
+  let live: number | null = null;
+  let open = false;
+  let floor = 0;
+  let spoke = false;
+  let quiet = 0;
+  let heard = 0;
+  let over = false;
+  let finish = () => {};
 
-  return new Promise((resolve) => {
-    let live: number | null = null;
-    let open = false;
-    let floor = 0;
-    let spoke = false;
-    let quiet = 0;
-    let heard = 0;
-
-    let done = false;
-    function finish() {
-      if (done) return;
-      done = true;
-      signal.removeEventListener("abort", finish);
-      node.onaudioprocess = null;
-      node.disconnect();
-      source.disconnect();
-      for (const track of stream.getTracks()) track.stop();
-      void context.close();
-      if (tones && open && !signal.aborted) cue("micClosed");
-      if (!spoke || signal.aborted) return resolve(null);
-      const audio = new Float32Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
-      chunks.reduce((at, chunk) => (audio.set(chunk, at), at + chunk.length), 0);
-      resolve(audio);
+  const ended = new Promise<void>((resolve) => (finish = () => ((over = true), resolve())));
+  const stop = await openMic((data) => {
+    if (over) return;
+    const rms = Math.sqrt(data.reduce((sum, x) => sum + x * x, 0) / data.length);
+    const ms = (data.length / RATE) * 1000;
+    if (live === null) {
+      if (rms < 1e-5) return;
+      live = 0;
     }
-    signal.addEventListener("abort", finish, { once: true });
-
-    node.onaudioprocess = (event) => {
-      const data = new Float32Array(event.inputBuffer.getChannelData(0));
-      const rms = Math.sqrt(data.reduce((sum, x) => sum + x * x, 0) / data.length);
-      const ms = (data.length / RATE) * 1000;
-      if (live === null) {
-        if (rms < 1e-5) return;
-        live = 0;
-      }
-      live += ms;
-      if (live <= FLOOR_MS) return void (floor = Math.max(floor, rms));
-      if (!open) {
-        open = true;
-        if (tones) cue("micOpen");
-        onOpen();
-      }
-      if (live < FLOOR_MS + BEEP_MS) return; // the beep itself
-      chunks.push(data);
-      heard += ms;
-      if (rms > Math.min(Math.max(floor * 3, 0.01), 0.05)) {
-        spoke = true;
-        quiet = 0;
-      } else if (spoke) quiet += ms;
-      else if (chunks.length > LEAD_CHUNKS) chunks.shift();
-      if ((spoke && quiet > QUIET_MS) || heard > LONGEST_MS || (!spoke && heard > WAIT_MS))
-        finish();
-    };
-    source.connect(node);
-    node.connect(context.destination);
+    live += ms;
+    if (live <= FLOOR_MS) return void (floor = Math.max(floor, rms));
+    if (!open) {
+      open = true;
+      if (tones) cue("micOpen");
+      onOpen();
+    }
+    if (live < FLOOR_MS + BEEP_MS) return; // the beep itself
+    chunks.push(data);
+    heard += ms;
+    if (rms > Math.min(Math.max(floor * 3, 0.01), 0.05)) {
+      spoke = true;
+      quiet = 0;
+    } else if (spoke) quiet += ms;
+    else if (chunks.length > LEAD_CHUNKS) chunks.shift();
+    if ((spoke && quiet > QUIET_MS) || heard > LONGEST_MS || (!spoke && heard > WAIT_MS)) finish();
   });
+  signal.addEventListener("abort", finish, { once: true });
+  if (signal.aborted) finish();
+  await ended;
+  signal.removeEventListener("abort", finish);
+  stop();
+
+  if (tones && open && !signal.aborted) cue("micClosed");
+  if (!spoke || signal.aborted) return null;
+  const audio = new Float32Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
+  chunks.reduce((at, chunk) => (audio.set(chunk, at), at + chunk.length), 0);
+  return audio;
 }
 
 let transcribing: Promise<unknown> = Promise.resolve();

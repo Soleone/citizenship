@@ -10,7 +10,7 @@
 import { useEffect, useEffectEvent, useSyncExternalStore } from "react";
 import { phrases } from "./audio.ts";
 import { unlockSound } from "./juice.ts";
-import { hear, hearPause, loadRecognizer, type Command } from "./listen.ts";
+import { hear, hearPause, listensWhileSpeaking, loadRecognizer, type Command } from "./listen.ts";
 import { say } from "./speak.ts";
 
 export type VoiceStatus =
@@ -68,8 +68,8 @@ export async function toggleVoice() {
   setStatus({ kind: "idle" });
   document.documentElement.setAttribute("data-voice", ""); // outlines what voice navigation focuses
   void keepAwake();
-  // The headset or steering wheel button: the only way to stop a long paragraph mid-sentence,
-  // since the page can't listen while it talks.
+  // The headset or steering wheel button: on the web, the only way to stop a long paragraph
+  // mid-sentence, since the page can't listen while it talks.
   navigator.mediaSession.setActionHandler("pause", pauseVoice);
   navigator.mediaSession.setActionHandler("play", resumeVoice);
 }
@@ -123,9 +123,8 @@ export function useVoiceTurn(step: string | null, turn: (voice: Voice) => Promis
     const voice: Voice = {
       say: async (text) => {
         setStatus({ kind: "speaking" });
-        if (text.length < LONG_LINE) return say(text, signal);
-        // Listening over the line, so "stop" works mid-sentence. Echo cancellation keeps
-        // the line itself mostly out of the mic.
+        if (!listensWhileSpeaking || text.length < LONG_LINE) return say(text, signal);
+        // Listening over the line, so "stop" works mid-sentence.
         const spoken = new AbortController();
         const over = AbortSignal.any([signal, spoken.signal]);
         void hearPause(text, over).then(

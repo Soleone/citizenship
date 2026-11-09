@@ -1,0 +1,27 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Citizenship",
+  "version": "0.1.0",
+  "identifier": "com.soleone.citizenship",
+  "build": {
+    "frontendDist": "https://citizenship.soleone.xyz"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Citizenship"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["icons/icon.png"],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}
