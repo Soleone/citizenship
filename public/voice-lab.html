@@ -159,6 +159,11 @@
           <button id="clip4">Listen, wait 4 s, play</button>
           <button id="clip6">Listen, wait 6 s, play</button>
         </div>
+        <p>Same, but the page records the mic itself for 3 s instead of Chrome's recognizer.</p>
+        <div class="row">
+          <button id="rawMic">Raw mic, then play</button>
+          <button id="callMic">Call-style mic, then play</button>
+        </div>
       </section>
 
       <section>
@@ -434,6 +439,26 @@
       $("clipLater").onclick = (e) => clipTest(e.target, 2000);
       $("clip4").onclick = (e) => clipTest(e.target, 4000);
       $("clip6").onclick = (e) => clipTest(e.target, 6000);
+
+      // Raw = no echo cancellation, which may keep the phone out of call mode.
+      async function micTest(button, processing) {
+        button.disabled = true;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: processing,
+            noiseSuppression: processing,
+            autoGainControl: processing,
+          },
+        });
+        $("status").textContent = "Mic open, say something...";
+        await beep();
+        await new Promise((r) => setTimeout(r, 3000));
+        for (const track of stream.getTracks()) track.stop();
+        await clipTest(null, 0);
+        button.disabled = false;
+      }
+      $("rawMic").onclick = (e) => micTest(e.target, false);
+      $("callMic").onclick = (e) => micTest(e.target, true);
 
       $("copy").onclick = () =>
         navigator.clipboard
