@@ -7,7 +7,9 @@ import type { Session, StudyBite, TestQuestion } from "./curriculum/index.ts";
  */
 export type SpokenLine = { id: string; text: string };
 
-const letters = ["A", "B", "C", "D"];
+// Options are read as the words you say to pick them: single letters weren't
+// recognised on the phones, Alpha to Delta were (voice lab, 2026-11-09).
+const letters = ["Alpha", "Bravo", "Charlie", "Delta"];
 
 const biteLine = (bite: StudyBite) => `${bite.title}. ${bite.body}`;
 const takeawayLine = (bite: StudyBite) => `Remember: ${bite.takeaway}`;
