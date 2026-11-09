@@ -6,6 +6,7 @@ import {
   LoaderCircle,
   Menu,
   Mic,
+  Pause,
   Settings2,
   Volume2,
   VolumeX,
@@ -126,6 +127,7 @@ function VoiceButton() {
     speaking: <AudioLines />,
     listening: <Mic />,
     thinking: <LoaderCircle className="animate-spin" />,
+    paused: <Pause />,
   }[voice.kind];
   return (
     <Button
@@ -141,10 +143,11 @@ function VoiceButton() {
   );
 }
 
-/** While the mic is open: a bar you can see from the driver's seat, with what you can say. */
+/** While the mic is open or paused: a bar you can see from the driver's seat, with what you can say. */
 function VoiceListening() {
   const voice = useVoice();
-  if (voice.kind !== "listening" && voice.kind !== "thinking") return null;
+  if (voice.kind !== "listening" && voice.kind !== "thinking" && voice.kind !== "paused")
+    return null;
   // True/false questions also take Alpha and Bravo, but showing those would only confuse.
   const commands =
     voice.kind === "listening"
@@ -156,15 +159,19 @@ function VoiceListening() {
       className="fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 bg-primary px-4 py-6 text-primary-foreground shadow-lg animate-in slide-in-from-bottom-4"
     >
       <span className="flex items-center gap-2 text-2xl font-semibold">
-        {voice.kind === "listening" ? (
-          <Mic className="size-6 animate-pulse" />
-        ) : (
-          <LoaderCircle className="size-6 animate-spin" />
-        )}
-        {voice.kind === "listening" ? "Speak now" : "Got it"}
+        {
+          {
+            listening: <Mic className="size-6 animate-pulse" />,
+            thinking: <LoaderCircle className="size-6 animate-spin" />,
+            paused: <Pause className="size-6" />,
+          }[voice.kind]
+        }
+        {{ listening: "Speak now", thinking: "Got it", paused: "Paused" }[voice.kind]}
       </span>
-      {voice.kind === "listening" && (
-        <span className="text-base capitalize">{commands.map(saying).join(" · ")}</span>
+      {voice.kind !== "thinking" && (
+        <span className={voice.kind === "paused" ? "text-base" : "text-base capitalize"}>
+          {voice.kind === "paused" ? "Say resume" : commands.map(saying).join(" · ")}
+        </span>
       )}
     </div>
   );
@@ -233,6 +240,7 @@ export function Header({
             ))}
           </SelectContent>
         </Select>
+        <VoiceToggle />
         <ThemePicker tagline={{ text: "Study a little,", highlight: "pass the test" }} />
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Menu" />}>

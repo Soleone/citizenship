@@ -50,6 +50,7 @@ import {
 import { Header, MissingScreen, Page, SettingsDialog, Toast } from "@/views/shell";
 import { navItems } from "@/views/nav";
 import { HomeView } from "@/views/home";
+import { useVoiceNavigation } from "@/views/voice-navigation";
 import { SessionDone, SessionScreen } from "@/views/session";
 import { TestResultScreen, TestRunner } from "@/views/test";
 import { RunwayView } from "@/views/runway";
@@ -66,6 +67,12 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const route = useMemo(() => parseRoute(location.pathname), [location.pathname]);
+  // Study sessions speak their own steps; Blitz is timed for tapping.
+  useVoiceNavigation(
+    route.view === "curriculum" || route.view === "blitz"
+      ? null
+      : `${location.pathname}${location.search}`,
+  );
   /** Whose desk this is comes from the URL, so a refresh cannot switch learners. `both` is a shared desk. */
   const profile: ActiveProfile = profileFromSearch(location.search);
 

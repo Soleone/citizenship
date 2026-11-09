@@ -12,7 +12,7 @@ import { formatDue, type ReviewCard } from "@/learning";
 import { cn } from "@/lib/utils";
 import type { PracticeState } from "@/state";
 import { AnswerChoices, Continue, Feedback, MissList, XpPop } from "./quiz";
-import { PlayBar, PlayPage } from "./shell";
+import { PlayBar, PlayPage, VoiceToggle } from "./shell";
 import { BiteVisual } from "./visual";
 
 export function TestRunner({
@@ -62,6 +62,7 @@ export function TestRunner({
           label={`Question ${practice.questionIndex + 1} of ${questions.length}`}
           onClose={onLeave}
         >
+          <VoiceToggle />
           {mock ? (
             <span
               className={cn("flex items-center gap-1", lowTime && "font-medium text-destructive")}
@@ -156,7 +157,13 @@ export function TestResultScreen({
   const passed = score >= needed;
 
   return (
-    <PlayPage bar={<PlayBar value={100} label="Test finished" onClose={onHome} />}>
+    <PlayPage
+      bar={
+        <PlayBar value={100} label="Test finished" onClose={onHome}>
+          <VoiceToggle />
+        </PlayBar>
+      }
+    >
       <section className="flex flex-col gap-3 py-6 animate-in fade-in">
         <p className="text-sm text-muted-foreground">{testLabel(practice.testId ?? "")}</p>
         <h1 className="text-3xl font-semibold tracking-tight">

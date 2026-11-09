@@ -24,6 +24,13 @@ export const phrases = {
   sayLetter: "Say Alpha, Bravo, Charlie or Delta.",
   sayTrueFalse: "Say true or false.",
   done: "Session complete. Say next for the next session.",
+  paused: "Paused. Say resume to go on.",
+  navigate: "Say down and up to move, and open to choose.",
+  opened: "Opened.",
+  closed: "Closed.",
+  first: "That's the first one.",
+  last: "That's the last one.",
+  pickFirst: "Say down to pick something first.",
 };
 
 export const introLine = (session: Session) => `${session.title}. ${session.summary}`;

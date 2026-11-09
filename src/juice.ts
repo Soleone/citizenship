@@ -43,16 +43,28 @@ const SOUNDS = {
   win: () =>
     [523, 659, 784, 1047].forEach((freq, index) => tone(freq, index * 0.09, 0.25, "triangle")),
   tick: () => tone(1200, 0, 0.04, "square", 0.03),
-  micOpen: () => tone(880, 0, 0.15, "sine", 0.2),
-  micClosed: () => tone(440, 0, 0.15, "sine", 0.2),
+  // Soft chimes, a rising fifth when the mic opens and the same notes falling when it closes.
+  micOpen: () => {
+    tone(784, 0, 0.2, "sine", 0.1);
+    tone(1175, 0.09, 0.3, "sine", 0.1);
+  },
+  micClosed: () => {
+    tone(1175, 0, 0.2, "sine", 0.08);
+    tone(784, 0.09, 0.3, "sine", 0.08);
+  },
 };
 
 export type SoundName = keyof typeof SOUNDS;
 
-function sound(name: SoundName) {
-  if (typeof window === "undefined") return;
+/** Android only lets a page start sound from a tap, so a tap that will need sound later calls this. */
+export function unlockSound() {
   audio ??= new AudioContext();
   if (audio.state === "suspended") void audio.resume();
+}
+
+function sound(name: SoundName) {
+  if (typeof window === "undefined") return;
+  unlockSound();
   SOUNDS[name]();
 }
 

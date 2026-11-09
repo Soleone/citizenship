@@ -115,7 +115,7 @@ export function SessionScreen({
       else
         await voice.say(question.kind === "truefalse" ? phrases.sayTrueFalse : phrases.sayLetter);
     }
-    voice.stop(); // nobody is answering: switch off rather than nag
+    voice.pause(); // nobody is answering: wait for resume rather than nag
   });
 
   const nextLabel =

@@ -8,18 +8,21 @@
  */
 
 import { useEffect, useEffectEvent, useSyncExternalStore } from "react";
+import { phrases } from "./audio.ts";
+import { unlockSound } from "./juice.ts";
 import { hear, loadRecognizer, type Command } from "./listen.ts";
 import { say } from "./speak.ts";
 
 export type VoiceStatus =
   | { kind: "off" }
   | { kind: "loading"; percent: number }
-  | { kind: "idle" | "speaking" | "thinking" }
+  | { kind: "idle" | "speaking" | "thinking" | "paused" }
   | { kind: "listening"; commands: Command[] };
 
 let status: VoiceStatus = { kind: "off" };
 const listeners = new Set<() => void>();
 let wakeLock: WakeLockSentinel | null = null;
+let paused: AbortController | null = null;
 
 function setStatus(next: VoiceStatus) {
   status = next;
@@ -33,6 +36,7 @@ function subscribe(listener: () => void) {
 
 export const useVoice = () => useSyncExternalStore(subscribe, () => status);
 const isOn = (s: VoiceStatus) => s.kind !== "off" && s.kind !== "loading";
+const isRunning = (s: VoiceStatus) => isOn(s) && s.kind !== "paused";
 
 async function keepAwake() {
   if (!isOn(status) || document.visibilityState !== "visible") return;
@@ -43,11 +47,15 @@ document.addEventListener("visibilitychange", () => void keepAwake());
 
 export async function toggleVoice() {
   if (status.kind !== "off") {
+    paused?.abort();
     setStatus({ kind: "off" });
     void wakeLock?.release();
     wakeLock = null;
+    navigator.mediaSession.setActionHandler("pause", null);
+    navigator.mediaSession.setActionHandler("play", null);
     return;
   }
+  unlockSound(); // this tap is the only chance: the mic tones play later, without one
   setStatus({ kind: "loading", percent: 0 });
   try {
     await loadRecognizer((percent) => setStatus({ kind: "loading", percent }));
@@ -57,46 +65,77 @@ export async function toggleVoice() {
   }
   setStatus({ kind: "idle" });
   void keepAwake();
+  // The headset or steering wheel button: the only way to stop a long paragraph mid-sentence,
+  // since the page can't listen while it talks.
+  navigator.mediaSession.setActionHandler("pause", pauseVoice);
+  navigator.mediaSession.setActionHandler("play", resumeVoice);
+}
+
+/** Stops the current step and listens, without tones, until someone says resume. */
+function pauseVoice() {
+  if (!isRunning(status)) return;
+  setStatus({ kind: "paused" });
+  const controller = new AbortController();
+  paused = controller;
+  const { signal } = controller;
+  void (async () => {
+    await say(phrases.paused, signal);
+    while ((await hear(["resume"], signal, () => {}, false)) !== "resume");
+    resumeVoice();
+  })().catch((error: unknown) => signal.aborted || console.error(error));
+}
+
+/** The current step starts again from its beginning. */
+function resumeVoice() {
+  if (status.kind !== "paused") return;
+  paused?.abort();
+  setStatus({ kind: "idle" });
 }
 
 export type Voice = {
   say: (text: string) => Promise<void>;
   hear: (commands: Command[]) => Promise<Command | null>;
-  stop: () => void;
+  pause: () => void;
 };
 
 /** Is voice mode on, for screens that prepare ahead (prefetching clips). */
 export const useVoiceOn = () => isOn(useVoice());
 
 /**
- * Runs `turn` while voice mode is on, again whenever `step` changes. A new step,
- * or switching voice off, stops the running turn mid-sentence.
+ * Runs `turn` while voice mode is on, again whenever `step` changes; null runs
+ * nothing. A new step, pausing or switching voice off stops the running turn
+ * mid-sentence. "pause" and "back" work at every listening point.
  */
-export function useVoiceTurn(step: string, turn: (voice: Voice) => Promise<void>) {
-  const on = useVoiceOn();
+export function useVoiceTurn(step: string | null, turn: (voice: Voice) => Promise<void>) {
+  const running = isRunning(useVoice());
   const run = useEffectEvent(turn);
 
   useEffect(() => {
-    if (!on) return;
+    if (!running || step === null) return;
     const controller = new AbortController();
     const { signal } = controller;
     const voice: Voice = {
       say: (text) => (setStatus({ kind: "speaking" }), say(text, signal)),
-      hear: (commands) => {
+      hear: async (commands) => {
         setStatus({ kind: "idle" }); // the mic takes a moment to open
-        return hear(commands, signal, (kind) =>
+        const heard = await hear([...commands, "pause", "back"], signal, (kind) =>
           setStatus(kind === "listening" ? { kind, commands } : { kind }),
         );
+        if (heard !== "pause" && heard !== "back") return heard;
+        if (heard === "pause") pauseVoice();
+        else history.back(); // the screen it lands on starts its own turn
+        controller.abort();
+        throw signal.reason;
       },
-      stop: () => void toggleVoice(),
+      pause: pauseVoice,
     };
     run(voice)
-      .then(() => isOn(status) && !signal.aborted && setStatus({ kind: "idle" }))
+      .then(() => isRunning(status) && !signal.aborted && setStatus({ kind: "idle" }))
       .catch((error: unknown) => {
         if (signal.aborted) return;
         console.error(error);
         void toggleVoice();
       });
     return () => controller.abort();
-  }, [on, step]);
+  }, [running, step]);
 }
