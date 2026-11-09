@@ -16,30 +16,40 @@ export type SpokenLine = { id: string; text: string };
 // recognised on the phones, Alpha to Delta were (voice lab, 2026-11-09).
 const letters = ["Alpha", "Bravo", "Charlie", "Delta"];
 
-const biteLine = (bite: StudyBite) => `${bite.title}. ${bite.body}`;
-const takeawayLine = (bite: StudyBite) => `Remember: ${bite.takeaway}`;
+/** What voice mode says between the curriculum lines. */
+export const phrases = {
+  correct: "Correct.",
+  wrong: "Not quite.",
+  sayLetter: "Say Alpha, Bravo, Charlie or Delta.",
+  sayTrueFalse: "Say true or false.",
+  done: "Session complete. Say next for the next session.",
+};
 
-function questionLine(question: TestQuestion) {
+export const introLine = (session: Session) => `${session.title}. ${session.summary}`;
+export const biteLine = (bite: StudyBite) => `${bite.title}. ${bite.body}`;
+export const takeawayLine = (bite: StudyBite) => `Remember: ${bite.takeaway}`;
+
+export function questionLine(question: TestQuestion) {
   if (question.kind === "truefalse") return `True or false? ${question.prompt}`;
   return `${question.prompt} ${question.options.map((o, i) => `${letters[i]}: ${o}.`).join(" ")}`;
 }
 
-function answerLine(question: TestQuestion) {
+export function answerLine(question: TestQuestion) {
   const option = question.options[question.correctIndex];
   const answer =
     question.kind === "truefalse" ? option : `${letters[question.correctIndex]}: ${option}`;
   return `The answer is ${answer}. ${question.rationale}`;
 }
 
-function sessionTexts(session: Session): string[] {
+export function sessionTexts(session: Session): string[] {
   return [
-    `${session.title}. ${session.summary}`,
+    introLine(session),
     ...session.bites.flatMap((bite) => [biteLine(bite), takeawayLine(bite)]),
     ...session.test.flatMap((question) => [questionLine(question), answerLine(question)]),
   ];
 }
 
-async function clipId(text: string): Promise<string> {
+export async function clipId(text: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text));
   return [...new Uint8Array(digest).slice(0, 8)]
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -48,6 +58,6 @@ async function clipId(text: string): Promise<string> {
 
 /** Every line the app speaks, once each, in study order. */
 export async function curriculumLines(): Promise<SpokenLine[]> {
-  const texts = [...new Set(allSessions.flatMap(sessionTexts))];
+  const texts = [...new Set([...Object.values(phrases), ...allSessions.flatMap(sessionTexts)])];
   return Promise.all(texts.map(async (text) => ({ id: await clipId(text), text })));
 }

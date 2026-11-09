@@ -13,8 +13,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { curriculumLines } from "../src/audio.ts";
-
-const SYNC_URL = "https://civic-relay-sync.login-ccf.workers.dev";
+import { SYNC_URL } from "../src/sync.ts";
 const PARALLEL = 8;
 
 const data = process.env.DATA;

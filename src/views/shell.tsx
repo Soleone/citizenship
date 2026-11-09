@@ -1,5 +1,16 @@
 import { useState, type ReactNode } from "react";
-import { Flame, Menu, Settings2, Volume2, VolumeX, X } from "lucide-react";
+import {
+  AudioLines,
+  Flame,
+  Headphones,
+  LoaderCircle,
+  Menu,
+  Mic,
+  Settings2,
+  Volume2,
+  VolumeX,
+  X,
+} from "lucide-react";
 import { Link } from "react-router";
 import { ThemePicker } from "@/components/soleone/theme-picker";
 import { Button } from "@/components/ui/button";
@@ -46,6 +57,7 @@ import {
   type View,
 } from "@/state";
 import { householdLink, type SyncStatus } from "@/sync";
+import { toggleVoice, useVoice } from "@/voice";
 import { navItems } from "./nav";
 
 /** The column every list screen sits in, under the header. */
@@ -90,6 +102,31 @@ export function PlayBar({
         {children}
       </div>
     </div>
+  );
+}
+
+/** Voice mode on and off, and what it is doing: loading, speaking or listening. */
+export function VoiceToggle() {
+  const voice = useVoice();
+  const on = voice.kind !== "off";
+  const icon = {
+    off: <Headphones />,
+    loading: <LoaderCircle className="animate-spin" />,
+    idle: <Headphones />,
+    speaking: <AudioLines />,
+    listening: <Mic />,
+  }[voice.kind];
+  return (
+    <Button
+      variant={on ? "secondary" : "ghost"}
+      size={voice.kind === "loading" ? "sm" : "icon"}
+      aria-label={on ? "Voice mode on" : "Voice mode"}
+      aria-pressed={on}
+      onClick={() => void toggleVoice()}
+    >
+      {icon}
+      {voice.kind === "loading" && `${Math.round(voice.percent)}%`}
+    </Button>
   );
 }
 

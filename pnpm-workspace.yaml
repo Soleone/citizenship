@@ -8,3 +8,7 @@ peerDependencyRules:
     - vite
   allowedVersions:
     vite: "*"
+# Transformers.js pulls these in for Node; the app only runs it in the browser.
+allowBuilds:
+  onnxruntime-node: false
+  protobufjs: false

@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { normalizeRelayState, SYNC_STORAGE_KEY, type RelayState } from "./state.ts";
 
 /** The household sync Worker. A public address, not a credential: the key lives only on joined devices. */
-const SYNC_URL = "https://civic-relay-sync.login-ccf.workers.dev";
+export const SYNC_URL = "https://civic-relay-sync.login-ccf.workers.dev";
 const KEY_STORAGE_KEY = "civic-relay-household";
 const JOIN_HASH = "#join=";
 const PUSH_DELAY_MS = 1500;

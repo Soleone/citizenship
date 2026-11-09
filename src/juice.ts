@@ -43,6 +43,7 @@ const SOUNDS = {
   win: () =>
     [523, 659, 784, 1047].forEach((freq, index) => tone(freq, index * 0.09, 0.25, "triangle")),
   tick: () => tone(1200, 0, 0.04, "square", 0.03),
+  listen: () => tone(880, 0, 0.15),
 };
 
 export type SoundName = keyof typeof SOUNDS;
