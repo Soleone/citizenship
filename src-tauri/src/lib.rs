@@ -16,10 +16,19 @@ mod native {
     pub struct Mic(PluginHandle<Wry>);
     pub struct Speech(PluginHandle<Wry>);
 
-    pub fn init() -> TauriPlugin<Wry> {
-        Builder::new("native")
+    /// One Tauri plugin per Kotlin plugin: a second registration under the same name replaces the first.
+    pub fn mic() -> TauriPlugin<Wry> {
+        Builder::new("mic")
             .setup(|app, api| {
                 app.manage(Mic(api.register_android_plugin("com.soleone.citizenship", "MicPlugin")?));
+                Ok(())
+            })
+            .build()
+    }
+
+    pub fn speech() -> TauriPlugin<Wry> {
+        Builder::new("speech")
+            .setup(|app, api| {
                 app.manage(Speech(api.register_android_plugin("com.soleone.citizenship", "SpeechPlugin")?));
                 Ok(())
             })
@@ -61,7 +70,7 @@ mod native {
 pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(native::init()).invoke_handler(tauri::generate_handler![
+    let builder = builder.plugin(native::mic()).plugin(native::speech()).invoke_handler(tauri::generate_handler![
         native::mic_start,
         native::mic_stop,
         native::speak,

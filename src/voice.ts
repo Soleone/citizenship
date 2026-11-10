@@ -53,8 +53,8 @@ export async function toggleVoice() {
     document.documentElement.removeAttribute("data-voice");
     void wakeLock?.release();
     wakeLock = null;
-    navigator.mediaSession.setActionHandler("pause", null);
-    navigator.mediaSession.setActionHandler("play", null);
+    navigator.mediaSession?.setActionHandler("pause", null);
+    navigator.mediaSession?.setActionHandler("play", null);
     return;
   }
   unlockSound(); // this tap is the only chance: the mic tones play later, without one
@@ -69,9 +69,9 @@ export async function toggleVoice() {
   document.documentElement.setAttribute("data-voice", ""); // outlines what voice navigation focuses
   void keepAwake();
   // The headset or steering wheel button: on the web, the only way to stop a long paragraph
-  // mid-sentence, since the page can't listen while it talks.
-  navigator.mediaSession.setActionHandler("pause", pauseVoice);
-  navigator.mediaSession.setActionHandler("play", resumeVoice);
+  // mid-sentence, since the page can't listen while it talks. The app's WebView has no mediaSession.
+  navigator.mediaSession?.setActionHandler("pause", pauseVoice);
+  navigator.mediaSession?.setActionHandler("play", resumeVoice);
 }
 
 /** Stops the current step and listens, without tones, until someone says resume. */
