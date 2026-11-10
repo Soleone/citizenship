@@ -13,7 +13,7 @@
     "release": false
   },
   "hooks": {
-    "before:git:release": "vp fmt CHANGELOG.md"
+    "before:git:release": "vp fmt CHANGELOG.md && git add CHANGELOG.md"
   },
   "plugins": {
     "@release-it/conventional-changelog": {
