@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.1](https://github.com/Soleone/citizenship/compare/v0.1.0...v0.1.1) (2026-11-10)
+
+### Bug Fixes
+
+* **android:** phone voice for voice navigation, 16 KB page alignment ([5364e3b](https://github.com/Soleone/citizenship/commit/5364e3bdb369f4b4e615c5f2be62af0990f02aed))
+
 ## 0.1.0 (2026-11-09)
 
 ### Features
