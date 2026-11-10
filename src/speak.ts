@@ -4,6 +4,7 @@
  * regenerated), so voice mode never goes silent.
  */
 
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { clipId } from "./audio.ts";
 import { SYNC_URL } from "./sync.ts";
 
@@ -46,6 +47,10 @@ export async function say(text: string, signal: AbortSignal) {
       audio.onended = audio.onerror = () => resolve();
       signal.addEventListener("abort", () => audio.pause(), { once: true });
       audio.play().catch(() => resolve());
+    } else if (isTauri()) {
+      // The app's WebView has no speechSynthesis.
+      void invoke("speak", { text }).finally(resolve);
+      signal.addEventListener("abort", () => void invoke("silence"), { once: true });
     } else {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-CA";

@@ -12,9 +12,14 @@
   "github": {
     "release": false
   },
+  "hooks": {
+    "after:bump": "vp fmt CHANGELOG.md"
+  },
   "plugins": {
     "@release-it/conventional-changelog": {
-      "preset": { "name": "conventionalcommits" },
+      "preset": {
+        "name": "conventionalcommits"
+      },
       "infile": "CHANGELOG.md",
       "header": "# Changelog",
       "ignoreRecommendedBump": true
