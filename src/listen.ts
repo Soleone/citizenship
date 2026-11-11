@@ -228,10 +228,12 @@ export async function hearPause(line: string, signal: AbortSignal) {
   }
 }
 
+/** Lowercase words only: Moonshine writes "Don't." for "down". */
 const clean = (text: string) =>
   text
     .toLowerCase()
-    .replace(/[.,!?]/g, "")
+    .replace(/[^a-z ]/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 
 function distance(a: string, b: string) {
@@ -245,7 +247,18 @@ function distance(a: string, b: string) {
   return row[b.length];
 }
 
-/** An exact saying anywhere in what was heard, else the closest by spelling ("brava"), if clearly closest. */
+/**
+ * The runs of as many words as `saying` has, so "uh dawn" is compared word by word.
+ * Longer answers only as a whole: "it" in a sentence is not "wait".
+ */
+function runs(said: string, saying: string) {
+  const words = said.split(" ");
+  if (words.length > 3) return [said];
+  const size = saying.split(" ").length;
+  return words.slice(0, Math.max(words.length - size + 1, 1)).map((_, i) => words.slice(i, i + size).join(" "));
+}
+
+/** An exact saying anywhere in what was heard, else the closest by spelling ("brava", "dawn"), if clearly closest. */
 function match(text: string, commands: Command[]): Command | null {
   const said = clean(text);
   const sayings = commands.flatMap((command) => SAYINGS[command].map((s) => [command, s] as const));
@@ -254,8 +267,10 @@ function match(text: string, commands: Command[]): Command | null {
 
   const scores = new Map<Command, number>();
   for (const [command, saying] of sayings) {
-    const score = 1 - distance(said, saying) / Math.max(said.length, saying.length);
-    scores.set(command, Math.max(scores.get(command) ?? 0, score));
+    for (const run of runs(said, saying)) {
+      const score = 1 - distance(run, saying) / Math.max(run.length, saying.length);
+      scores.set(command, Math.max(scores.get(command) ?? 0, score));
+    }
   }
   const [first, second] = [...scores].sort((a, b) => b[1] - a[1]);
   return first[1] >= 0.5 && first[1] - (second?.[1] ?? 0) >= 0.15 ? first[0] : null;

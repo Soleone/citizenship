@@ -45,8 +45,8 @@ mod native {
 
     /// Streams 16 kHz mono samples as base64 16-bit PCM until `mic_stop`.
     #[tauri::command]
-    pub async fn mic_start(mic: State<'_, Mic>, chunks: Channel<String>) -> Result<(), String> {
-        call(&mic.0, "start", serde_json::json!({ "chunks": chunks })).await
+    pub async fn mic_start(mic: State<'_, Mic>, chunks: Channel<String>, source: Option<String>) -> Result<(), String> {
+        call(&mic.0, "start", serde_json::json!({ "chunks": chunks, "source": source })).await
     }
 
     #[tauri::command]

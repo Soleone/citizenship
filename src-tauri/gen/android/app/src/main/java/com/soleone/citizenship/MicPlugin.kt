@@ -29,6 +29,7 @@ private const val CHUNK = 1024 // samples, as the page's ScriptProcessor deliver
 @InvokeArg
 class MicArgs {
   lateinit var chunks: Channel
+  var source: String? = null
 }
 
 /**
@@ -65,7 +66,8 @@ class MicPlugin(private val activity: Activity) : Plugin(activity) {
   @SuppressLint("MissingPermission") // checked in start
   private fun record(invoke: Invoke) {
     stopRecording()
-    val chunks = invoke.parseArgs(MicArgs::class.java).chunks
+    val args = invoke.parseArgs(MicArgs::class.java)
+    val chunks = args.chunks
     recordingFor = chunks.id
     val size = maxOf(
       AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT),
@@ -73,7 +75,7 @@ class MicPlugin(private val activity: Activity) : Plugin(activity) {
     )
     // VOICE_RECOGNITION skips the call-style processing that MIC or VOICE_COMMUNICATION add.
     val recorder = AudioRecord(
-      MediaRecorder.AudioSource.VOICE_RECOGNITION,
+      if (args.source?.startsWith("vc") == true) MediaRecorder.AudioSource.VOICE_COMMUNICATION else MediaRecorder.AudioSource.VOICE_RECOGNITION,
       RATE,
       AudioFormat.CHANNEL_IN_MONO,
       AudioFormat.ENCODING_PCM_16BIT,
@@ -84,6 +86,11 @@ class MicPlugin(private val activity: Activity) : Plugin(activity) {
     audio.getDevices(AudioManager.GET_DEVICES_INPUTS)
       .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }
       ?.let { recorder.setPreferredDevice(it) }
+    if (args.source?.endsWith("aec") == true) {
+      val aec = android.media.audiofx.AcousticEchoCanceler.create(recorder.audioSessionId)
+      aec?.enabled = true
+      android.util.Log.i("MicPlugin", "aec available=${android.media.audiofx.AcousticEchoCanceler.isAvailable()} created=${aec != null} enabled=${aec?.enabled}")
+    }
     recorder.startRecording()
     recording = thread {
       val samples = ShortArray(CHUNK)
