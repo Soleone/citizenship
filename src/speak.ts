@@ -8,7 +8,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { clipId } from "./audio.ts";
 import { SYNC_URL } from "./sync.ts";
 
-const CLIPS = `${SYNC_URL}/audio/phonon-miles`;
+const CLIPS = `${SYNC_URL}/audio/breeze-radio-man`;
 
 /** Text to a playable blob URL, or null when there is no clip. */
 const clips = new Map<string, Promise<string | null>>();
