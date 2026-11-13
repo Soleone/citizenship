@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.3](https://github.com/Soleone/citizenship/compare/v0.1.2...v0.1.3) (2026-11-13)
+
+### Bug Fixes
+
+- **audio:** use playback latency hint for AudioContext ([f3991ef](https://github.com/Soleone/citizenship/commit/f3991ef3564b4be6c144ef7795ecaee6f6e85b3e))
+
 ## [0.1.2](https://github.com/Soleone/citizenship/compare/v0.1.1...v0.1.2) (2026-11-13)
 
 ### Features
