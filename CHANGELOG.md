@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.4](https://github.com/Soleone/citizenship/compare/v0.1.3...v0.1.4) (2026-11-13)
+
+### Features
+
+- **voice:** move by row and column, chain commands in one breath ([b8e9833](https://github.com/Soleone/citizenship/commit/b8e9833864ab2c751e0a1f37f4d2337e7d15d870))
+
 ## [0.1.3](https://github.com/Soleone/citizenship/compare/v0.1.2...v0.1.3) (2026-11-13)
 
 ### Bug Fixes
