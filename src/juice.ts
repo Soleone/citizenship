@@ -58,7 +58,8 @@ export type SoundName = keyof typeof SOUNDS;
 
 /** Android only lets a page start sound from a tap, so a tap that will need sound later calls this. */
 export function unlockSound() {
-  audio ??= new AudioContext();
+  // Not the default low-latency output: on Android it garbles a lesson playing while the app's mic is open.
+  audio ??= new AudioContext({ latencyHint: "playback" });
   if (audio.state === "suspended") void audio.resume();
 }
 
