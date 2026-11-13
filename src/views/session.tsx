@@ -57,7 +57,7 @@ export function SessionScreen({
   /** 0 is the reading; 1..n is the nth quick check. */
   const [step, setStep] = useState(0);
   const [picks, setPicks] = useState<Record<string, number>>({});
-  /** Bumped by "repeat", so voice mode says the same step again. */
+  /** Bumped by "repeat", so voice mode says the same answer again. */
   const [replays, setReplays] = useState(0);
   const question = step > 0 ? checks[step - 1] : null;
   const picked = question ? (picks[question.id] ?? null) : null;
@@ -88,26 +88,27 @@ export function SessionScreen({
     if (voiceOn) prefetch(sessionTexts(session));
   }, [voiceOn, session]);
 
-  // Silence after a reading or an answer goes on by itself; a question waits for an answer.
+  // A reading and a right answer go straight on; a question waits for an answer, and
+  // "back" there reads the bite again. Only a miss stops to offer its explanation twice.
   useVoiceTurn(`${step}:${picked}:${replays}`, async (voice) => {
-    const again = async () => {
-      await voice.say(phrases.repeating);
-      setReplays((n) => n + 1);
-    };
     if (!question) {
-      if (biteIndex === 0 && replays === 0) await voice.say(introLine(session));
+      if (biteIndex === 0) await voice.say(introLine(session));
       await voice.say(biteLine(bite));
       await voice.say(takeawayLine(bite));
-      return (await voice.hear(["next", "repeat"])) === "repeat" ? again() : next();
+      return next();
     }
     if (picked !== null) {
-      await voice.say(anyOf(picked === question.correctIndex ? phrases.correct : phrases.wrong));
+      const right = picked === question.correctIndex;
+      await voice.say(anyOf(right ? phrases.correct : phrases.wrong));
       await voice.say(answerLine(question));
-      return (await voice.hear(["next", "repeat"])) === "repeat" ? again() : next();
+      if (right || (await voice.hear(["next", "repeat"])) !== "repeat") return next();
+      await voice.say(phrases.repeating);
+      return setReplays((n) => n + 1);
     }
     await voice.say(questionLine(question));
     for (let tries = 0; tries < LISTEN_TRIES; tries++) {
-      const command = await voice.hear([...answerCommands(question), "repeat"]);
+      const command = await voice.hear([...answerCommands(question), "repeat", "back"]);
+      if (command === "back") return setStep(0);
       if (command === "repeat") {
         await voice.say(phrases.repeating);
         await voice.say(questionLine(question));
@@ -224,15 +225,17 @@ export function SessionDone({
   const correct = answers.filter(Boolean).length;
   const complete = answers.length === session.test.length;
   const missed = run ? session.test.filter((question) => run.answers[question.id] === false) : [];
-  const [replays, setReplays] = useState(0);
-  useVoiceTurn(`done:${replays}`, async (voice) => {
-    await voice.say(phrases.done);
+  const retake = !complete || !result?.passed;
+  // A passed test goes straight to the next session.
+  useVoiceTurn("done", async (voice) => {
+    if (!retake) {
+      await voice.say(phrases.done);
+      return onNext();
+    }
+    await voice.say(phrases.doneMissed);
     const command = await voice.hear(["next", "repeat"]);
     if (command === "next") onNext();
-    if (command === "repeat") {
-      await voice.say(phrases.repeating);
-      setReplays((n) => n + 1);
-    }
+    if (command === "repeat") onRetake();
   });
 
   return (
@@ -263,7 +266,7 @@ export function SessionDone({
         <Button size="lg" onClick={onNext}>
           Next session
         </Button>
-        {(!complete || !result?.passed) && (
+        {retake && (
           <Button size="lg" variant="outline" onClick={onRetake}>
             {complete ? "Retake the test" : "Take the test"}
           </Button>

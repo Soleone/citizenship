@@ -130,16 +130,25 @@ function VoiceButton() {
     paused: <Pause />,
   }[voice.kind];
   return (
-    <Button
-      variant={on ? "secondary" : "ghost"}
-      size={voice.kind === "loading" ? "sm" : "icon"}
-      aria-label={on ? "Voice mode on" : "Voice mode"}
-      aria-pressed={on}
-      onClick={() => void toggleVoice()}
-    >
-      {icon}
-      {voice.kind === "loading" && `${Math.round(voice.percent)}%`}
-    </Button>
+    <span className="relative inline-flex">
+      <Button
+        variant={on ? "secondary" : "ghost"}
+        size={voice.kind === "loading" ? "sm" : "icon"}
+        aria-label={on ? "Voice mode on" : "Voice mode"}
+        aria-pressed={on}
+        onClick={() => void toggleVoice()}
+      >
+        {icon}
+        {voice.kind === "loading" && `${Math.round(voice.percent)}%`}
+      </Button>
+      {/* On air: the icons alone look too alike to tell on from off at a glance. */}
+      {on && voice.kind !== "loading" && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-0.5 -right-0.5 size-3 animate-pulse rounded-full bg-destructive ring-2 ring-background"
+        />
+      )}
+    </span>
   );
 }
 

@@ -23,6 +23,8 @@ export type Command =
   | "repeat"
   | "up"
   | "down"
+  | "left"
+  | "right"
   | "open"
   | "back"
   | "pause"
@@ -39,6 +41,8 @@ const SAYINGS: Record<Command, string[]> = {
   repeat: ["repeat", "again"],
   up: ["up", "go up", "previous"],
   down: ["down", "go down", "next"],
+  left: ["left", "go left"],
+  right: ["right", "go right"],
   open: ["open", "select", "enter", "expand", "close"],
   back: ["back", "go back"],
   pause: ["pause", "stop", "cancel", "wait"],
@@ -194,8 +198,8 @@ async function transcribe(audio: Float32Array) {
 }
 
 /**
- * Listens once: what was heard and which of `commands` it was (null when it was
- * none of them), or null when nobody spoke. Paused listening goes without tones.
+ * Listens once: what was heard and which of `commands` were said, in order (none
+ * when it was something else), or null when nobody spoke. Paused listening goes without tones.
  */
 export async function hear(
   commands: Command[],
@@ -210,7 +214,7 @@ export async function hear(
   onPhase("thinking");
   const text = await transcribe(audio);
   signal.throwIfAborted();
-  return { text, command: match(text, commands) };
+  return { text, commands: match(text, commands) };
 }
 
 /**
@@ -255,15 +259,28 @@ function runs(said: string, saying: string) {
   const words = said.split(" ");
   if (words.length > 3) return [said];
   const size = saying.split(" ").length;
-  return words.slice(0, Math.max(words.length - size + 1, 1)).map((_, i) => words.slice(i, i + size).join(" "));
+  return words
+    .slice(0, Math.max(words.length - size + 1, 1))
+    .map((_, i) => words.slice(i, i + size).join(" "));
 }
 
-/** An exact saying anywhere in what was heard, else the closest by spelling ("brava", "dawn"), if clearly closest. */
-function match(text: string, commands: Command[]): Command | null {
+/**
+ * Every exact saying in what was heard, in order ("down down right"), else the
+ * closest one by spelling ("brava", "dawn"), if clearly closest.
+ */
+function match(text: string, commands: Command[]): Command[] {
   const said = clean(text);
   const sayings = commands.flatMap((command) => SAYINGS[command].map((s) => [command, s] as const));
-  const exact = sayings.find(([, saying]) => ` ${said} `.includes(` ${saying} `));
-  if (exact) return exact[0];
+  const words = said.split(" ");
+  const exact: Command[] = [];
+  for (let at = 0; at < words.length;) {
+    const hit = sayings.find(
+      ([, saying]) => words.slice(at, at + saying.split(" ").length).join(" ") === saying,
+    );
+    if (hit) exact.push(hit[0]);
+    at += hit ? hit[1].split(" ").length : 1;
+  }
+  if (exact.length > 0) return exact;
 
   const scores = new Map<Command, number>();
   for (const [command, saying] of sayings) {
@@ -273,5 +290,5 @@ function match(text: string, commands: Command[]): Command | null {
     }
   }
   const [first, second] = [...scores].sort((a, b) => b[1] - a[1]);
-  return first[1] >= 0.5 && first[1] - (second?.[1] ?? 0) >= 0.15 ? first[0] : null;
+  return first[1] >= 0.5 && first[1] - (second?.[1] ?? 0) >= 0.15 ? [first[0]] : [];
 }

@@ -83,7 +83,7 @@ function pauseVoice() {
   const { signal } = controller;
   void (async () => {
     await say(phrases.paused, signal);
-    while ((await hear(["resume"], signal, () => {}, false))?.command !== "resume");
+    while ((await hear(["resume"], signal, () => {}, false))?.commands[0] !== "resume");
     resumeVoice();
   })().catch((error: unknown) => signal.aborted || console.error(error));
 }
@@ -101,6 +101,8 @@ const LONG_LINE = 80;
 export type Voice = {
   say: (text: string) => Promise<void>;
   hear: (commands: Command[]) => Promise<Command | null>;
+  /** Everything said in one go, in order: "down down down" is three. */
+  hearAll: (commands: Command[]) => Promise<Command[]>;
   pause: () => void;
 };
 
@@ -110,7 +112,8 @@ export const useVoiceOn = () => isOn(useVoice());
 /**
  * Runs `turn` while voice mode is on, again whenever `step` changes; null runs
  * nothing. A new step, pausing or switching voice off stops the running turn
- * mid-sentence. "pause" and "back" work at every listening point.
+ * mid-sentence. "pause" and "back" work at every listening point; "back" leaves
+ * the screen unless the turn listens for it itself.
  */
 export function useVoiceTurn(step: string | null, turn: (voice: Voice) => Promise<void>) {
   const running = isRunning(useVoice());
@@ -133,7 +136,8 @@ export function useVoiceTurn(step: string | null, turn: (voice: Voice) => Promis
         );
         await say(text, signal).finally(() => spoken.abort());
       },
-      hear: async (commands) => {
+      hear: async (commands) => (await voice.hearAll(commands))[0] ?? null,
+      hearAll: async (commands) => {
         let missed: string | undefined;
         let heard;
         // Only silence counts as no answer; something misheard listens again.
@@ -143,11 +147,11 @@ export function useVoiceTurn(step: string | null, turn: (voice: Voice) => Promis
             setStatus(kind === "listening" ? { kind, commands, missed } : { kind }),
           );
           missed = heard?.text.trim();
-        } while (missed && !heard?.command);
-        const command = heard?.command ?? null;
-        if (command !== "pause" && command !== "back") return command;
-        if (command === "pause") pauseVoice();
-        else history.back(); // the screen it lands on starts its own turn
+        } while (missed && !heard?.commands.length);
+        const said = heard?.commands ?? [];
+        if (said[0] === "pause") pauseVoice();
+        else if (said[0] === "back" && !commands.includes("back")) history.back(); // the screen it lands on starts its own turn
+        else return said;
         controller.abort();
         throw signal.reason;
       },
