@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.2](https://github.com/Soleone/citizenship/compare/v0.1.1...v0.1.2) (2026-11-13)
+
+### Features
+
+- **listen:** match sayings word by word in speech ([5738d7f](https://github.com/Soleone/citizenship/commit/5738d7f7525b8817e7dbe66112a10e74d5c4626e))
+- **speak:** switch audio clips to breeze model ([235ddce](https://github.com/Soleone/citizenship/commit/235ddced667d5fa224b5469dcbab5d590811f6a3))
+
+### Bug Fixes
+
+- **android:** mic and phone voice as separate plugins, no mediaSession in the app ([be088b3](https://github.com/Soleone/citizenship/commit/be088b3596a8e1662441e82351430593d01c9d2f))
+
 ## [0.1.1](https://github.com/Soleone/citizenship/compare/v0.1.0...v0.1.1) (2026-11-10)
 
 ### Bug Fixes
